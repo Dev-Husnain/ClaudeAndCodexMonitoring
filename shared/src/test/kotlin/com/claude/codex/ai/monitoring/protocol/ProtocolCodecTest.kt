@@ -41,6 +41,7 @@ class ProtocolCodecTest {
         Message.Ready(ComputerDto("c1", "Laptop"), listOf(ProjectDto("p1", "App")), listOf(session)),
         Message.SessionUpdate(session),
         Message.SessionEvent("s1", event),
+        Message.SessionRemoved("s1", "p1"),
         Message.SessionHistoryResult("s1", listOf(event), hasMore = false),
         Message.TerminalChunk("s1", "\u001B[32mok\u001B[0m"),
         Message.Ack("a1", DeliveryResult.DELIVERED),

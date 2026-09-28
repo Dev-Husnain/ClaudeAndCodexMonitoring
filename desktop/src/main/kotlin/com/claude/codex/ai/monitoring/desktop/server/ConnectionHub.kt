@@ -47,6 +47,12 @@ class ConnectionHub(private val codec: ProtocolCodec) {
         }
     }
 
+    /** Every phone reconnects and gets a fresh `ready` (used when the project list changes). */
+    suspend fun reconnectAll() {
+        val all = synchronized(sessions) { sessions.keys.toList() }
+        all.forEach { reconnect(it) }
+    }
+
     private fun snapshot(deviceId: String): List<DefaultWebSocketSession> =
         synchronized(sessions) { sessions[deviceId]?.toList().orEmpty() }
 

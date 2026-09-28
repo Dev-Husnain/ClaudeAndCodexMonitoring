@@ -43,7 +43,22 @@ class SessionRegistry(
 
     fun snapshot(): Message.Ready = _state.value.let { Message.Ready(computer, it.projects, it.sessions) }
 
-    fun projectOf(sessionId: String): String? = _state.value.sessions.firstOrNull { it.sessionId == sessionId }?.projectId
+    fun projectOf(sessionId: String): String? = session(sessionId)?.projectId
+
+    fun session(sessionId: String): SessionDto? = _state.value.sessions.firstOrNull { it.sessionId == sessionId }
+
+    fun removeSession(sessionId: String) {
+        val removed = session(sessionId) ?: return
+        _state.update { state -> state.copy(sessions = state.sessions.filterNot { it.sessionId == sessionId }) }
+        synchronized(lock) { timelines.remove(sessionId) }
+        _updates.tryEmit(Message.SessionRemoved(sessionId, removed.projectId))
+    }
+
+    /** Removes a project and all of its sessions. */
+    fun removeProject(projectId: String) {
+        _state.value.sessions.filter { it.projectId == projectId }.forEach { removeSession(it.sessionId) }
+        _state.update { state -> state.copy(projects = state.projects.filterNot { it.projectId == projectId }) }
+    }
 
     fun upsertProject(project: ProjectDto) {
         _state.update { state ->

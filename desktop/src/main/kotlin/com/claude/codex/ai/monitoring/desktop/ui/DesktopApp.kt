@@ -36,10 +36,13 @@ import com.claude.codex.ai.monitoring.desktop.ui.screens.ApprovalDialogContent
 import com.claude.codex.ai.monitoring.desktop.ui.screens.DevicesScreen
 import com.claude.codex.ai.monitoring.desktop.ui.screens.OverviewScreen
 import com.claude.codex.ai.monitoring.desktop.ui.screens.PairDialogContent
+import com.claude.codex.ai.monitoring.desktop.ui.screens.ProjectsScreen
+import java.nio.file.Path
+import javax.swing.JFileChooser
 import com.claude.codex.ai.monitoring.desktop.ui.theme.DesktopTheme
 import kotlinx.coroutines.delay
 
-private enum class Tab(val label: String) { OVERVIEW("Overview"), DEVICES("Devices"), ACTIVITY("Activity") }
+private enum class Tab(val label: String) { OVERVIEW("Overview"), PROJECTS("Projects"), DEVICES("Devices"), ACTIVITY("Activity") }
 
 /** Main window: sidebar navigation, the three screens, and the pair and approve dialogs. */
 @Composable
@@ -50,6 +53,9 @@ fun DesktopApp(controller: DesktopController) {
     val audit by controller.audit.entries.collectAsState()
     val offer by controller.pairing.offer.collectAsState()
     val pending by controller.pairing.pending.collectAsState()
+    val projects by controller.projects.projects.collectAsState()
+    val lastHookAt by controller.tracker.lastHookAt.collectAsState()
+    val projectError by controller.projectError.collectAsState()
     val colors = DesktopTheme.colors
 
     var tab by remember { mutableStateOf(Tab.OVERVIEW) }
@@ -91,8 +97,13 @@ fun DesktopApp(controller: DesktopController) {
                         color = if (selected) colors.textPrimary else colors.textSecondary,
                         modifier = Modifier.weight(1f),
                     )
-                    if (item == Tab.DEVICES && devices.isNotEmpty()) {
-                        Text(devices.size.toString(), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                    val count = when (item) {
+                        Tab.DEVICES -> devices.size
+                        Tab.PROJECTS -> projects.size
+                        else -> 0
+                    }
+                    if (count > 0) {
+                        Text(count.toString(), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
                     }
                 }
             }
@@ -104,6 +115,16 @@ fun DesktopApp(controller: DesktopController) {
                 registry = registryState,
                 connectedPhones = online.size,
                 demoMode = controller.demoMode,
+            )
+            Tab.PROJECTS -> ProjectsScreen(
+                projects = projects,
+                hooksInstalled = controller::hooksInstalled,
+                lastHookAt = lastHookAt,
+                error = projectError,
+                nowMs = now,
+                onAdd = { chooseFolder()?.let(controller::addProject) },
+                onReinstall = controller::reinstallHooks,
+                onRemove = controller::removeProject,
             )
             Tab.DEVICES -> DevicesScreen(
                 devices = devices,
@@ -156,4 +177,14 @@ fun DesktopApp(controller: DesktopController) {
             }
         }
     }
+}
+
+/** Native folder picker for "Add project"; null when cancelled. */
+private fun chooseFolder(): Path? {
+    val chooser = JFileChooser().apply {
+        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        dialogTitle = "Choose the project folder you run Claude Code in"
+        isAcceptAllFileFilterUsed = false
+    }
+    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) chooser.selectedFile.toPath() else null
 }

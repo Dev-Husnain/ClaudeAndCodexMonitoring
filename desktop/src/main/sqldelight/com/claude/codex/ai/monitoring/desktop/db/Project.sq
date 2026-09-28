@@ -1,0 +1,16 @@
+-- Projects whose Claude Code sessions are monitored (hooks installed in their .claude/settings.local.json).
+CREATE TABLE project (
+    project_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    added_at INTEGER NOT NULL
+);
+
+selectAll:
+SELECT * FROM project ORDER BY name COLLATE NOCASE;
+
+upsert:
+INSERT OR REPLACE INTO project(project_id, name, path, added_at) VALUES (?, ?, ?, ?);
+
+deleteById:
+DELETE FROM project WHERE project_id = ?;

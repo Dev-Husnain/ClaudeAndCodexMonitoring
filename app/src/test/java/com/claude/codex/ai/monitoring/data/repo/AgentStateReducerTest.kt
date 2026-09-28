@@ -118,4 +118,13 @@ class AgentStateReducerTest {
         assertTrue(refused.sessions.isEmpty())
         assertEquals(false, refused.canSendInput)
     }
+
+    @Test
+    fun `removed sessions disappear with their timeline`() {
+        val base = AgentStateReducer.onMessage(AgentSnapshotModel(), ready, 1)
+        val withHistory = AgentStateReducer.onMessage(base, Message.SessionHistoryResult("s1", listOf(event("e1", 1)), false), 2)
+        val removed = AgentStateReducer.onMessage(withHistory, Message.SessionRemoved("s1", "p1"), 3)
+        assertTrue(removed.sessions.isEmpty())
+        assertNull(removed.timelines["s1"])
+    }
 }

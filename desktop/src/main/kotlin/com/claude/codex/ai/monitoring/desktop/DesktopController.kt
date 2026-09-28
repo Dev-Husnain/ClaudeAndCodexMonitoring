@@ -8,7 +8,13 @@ import com.claude.codex.ai.monitoring.desktop.devices.PairedDevice
 import com.claude.codex.ai.monitoring.desktop.pairing.PairingDecision
 import com.claude.codex.ai.monitoring.desktop.pairing.PairingManager
 import com.claude.codex.ai.monitoring.desktop.security.DesktopIdentity
+import com.claude.codex.ai.monitoring.desktop.hooks.HookInstaller
+import com.claude.codex.ai.monitoring.desktop.projects.MonitoredProject
+import com.claude.codex.ai.monitoring.desktop.projects.ProjectStore
 import com.claude.codex.ai.monitoring.desktop.server.ConnectionHub
+import com.claude.codex.ai.monitoring.desktop.session.SessionTracker
+import com.claude.codex.ai.monitoring.protocol.ProjectDto
+import java.nio.file.Path
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import kotlinx.coroutines.CoroutineScope
@@ -37,8 +43,52 @@ class DesktopController(
     val identity: DesktopIdentity,
     val publicUrl: String,
     val demoMode: Boolean,
+    val projects: ProjectStore,
+    val tracker: SessionTracker,
+    private val installer: HookInstaller,
     private val scope: CoroutineScope,
 ) {
+    /** Last problem adding or removing a project, shown on the Projects screen until the next action. */
+    private val _projectError = MutableStateFlow<String?>(null)
+    val projectError: StateFlow<String?> = _projectError.asStateFlow()
+
+    fun hooksInstalled(project: MonitoredProject): Boolean = installer.isInstalled(Path.of(project.path))
+
+    /** Monitors [dir]: installs the hooks into its local settings and shows it to granted phones. */
+    fun addProject(dir: Path) {
+        scope.launch {
+            runCatching {
+                installer.install(dir)
+                val project = projects.add(dir)
+                registry.upsertProject(ProjectDto(project.projectId, project.name))
+                // Phones learn project names from `ready`; refresh them so the new project is named.
+                hub.reconnectAll()
+                audit.record(AuditCategory.ACCESS, "Monitoring \"${project.name}\" (hooks installed)")
+            }.onSuccess { _projectError.value = null }
+                .onFailure { _projectError.value = "Could not add ${dir.fileName}: ${it.message}" }
+        }
+    }
+
+    fun reinstallHooks(project: MonitoredProject) {
+        scope.launch {
+            runCatching { installer.install(Path.of(project.path)) }
+                .onSuccess { _projectError.value = null }
+                .onFailure { _projectError.value = "Could not reinstall hooks for ${project.name}: ${it.message}" }
+        }
+    }
+
+    /** Stops monitoring: removes only our hooks (the user's own hooks stay) and forgets the sessions. */
+    fun removeProject(project: MonitoredProject) {
+        scope.launch {
+            runCatching { installer.uninstall(Path.of(project.path)) }
+                .onFailure { _projectError.value = "Hooks for ${project.name} could not be removed: ${it.message}" }
+            projects.remove(project.projectId)
+            registry.removeProject(project.projectId)
+            hub.reconnectAll()
+            audit.record(AuditCategory.ACCESS, "Stopped monitoring \"${project.name}\" (hooks removed)")
+        }
+    }
+
     private val _route = MutableStateFlow(PairingRoute.USB)
     val route: StateFlow<PairingRoute> = _route.asStateFlow()
 

@@ -13,7 +13,12 @@ import androidx.compose.ui.window.rememberWindowState
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.devices.DeviceStore
+import com.claude.codex.ai.monitoring.desktop.hooks.HookInstaller
+import com.claude.codex.ai.monitoring.desktop.hooks.HookReceiver
 import com.claude.codex.ai.monitoring.desktop.pairing.PairingManager
+import com.claude.codex.ai.monitoring.desktop.projects.ProjectStore
+import com.claude.codex.ai.monitoring.desktop.session.SessionTracker
+import com.claude.codex.ai.monitoring.protocol.ProjectDto
 import com.claude.codex.ai.monitoring.desktop.security.DesktopIdentity
 import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
 import com.claude.codex.ai.monitoring.desktop.server.AgentServer
@@ -41,12 +46,13 @@ import java.net.InetAddress
 private const val VERSION = "1.0.0"
 
 /**
- * Arguments: `--no-demo` disables demo sessions; `--public-url=https://…` overrides the tunnel
+ * Arguments: `--demo` adds fake sessions for trying the phone without Claude Code; `--public-url=https://…` overrides the tunnel
  * address put in pairing QR codes; `--data-dir=…` moves the key and database (for testing).
  */
 fun main(args: Array<String>) {
     fun arg(name: String) = args.firstOrNull { it.startsWith("--$name=") }?.substringAfter("=")
-    val demoMode = "--no-demo" !in args
+    // Real sessions come from Claude Code hooks (phase 4); demo sessions are opt-in now.
+    val demoMode = "--demo" in args
     val publicUrl = arg("public-url") ?: "https://${ProtocolConstants.PUBLIC_HOST}"
     val computerName = System.getenv("COMPUTERNAME")
         ?: runCatching { InetAddress.getLocalHost().hostName }.getOrNull()
@@ -62,13 +68,21 @@ fun main(args: Array<String>) {
     // The computer id is derived from the desktop key, so it is stable and unique per install.
     val registry = SessionRegistry(ComputerDto(computerId = identity.fingerprint.take(32), name = computerName))
     val pairing = PairingManager(identity, devices, audit, computerName)
+    val projects = ProjectStore(database)
+    projects.projects.value.forEach { registry.upsertProject(ProjectDto(it.projectId, it.name)) }
+    val tracker = SessionTracker(registry, projects)
+    val installer = HookInstaller(HookInstaller.loadOrCreateSecret(dataDir.resolve("hook-secret")))
+    val hookReceiver = HookReceiver(installer.secret, tracker, audit)
     val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter())
-    val server = AgentServer(handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION)
+    val server = AgentServer(handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val controller = DesktopController(registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, scope)
+    val controller = DesktopController(
+        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, scope,
+    )
 
     server.start()
     audit.record(AuditCategory.SERVER, "Agent started on ${ProtocolConstants.LOOPBACK_HOST}:${ProtocolConstants.DEFAULT_PORT}")
+    scope.launch { tracker.runMaintenance() }
     if (demoMode) scope.launch { DemoSessionSimulator(registry).run() }
 
     application {

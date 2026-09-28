@@ -1,0 +1,7 @@
+-- v1 -> v2: monitored projects (phase 4).
+CREATE TABLE project (
+    project_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    added_at INTEGER NOT NULL
+);

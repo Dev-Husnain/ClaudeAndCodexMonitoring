@@ -114,6 +114,17 @@ Notes: sessions are demo data until phase 4.
 Notes: `PairingRepositoryImpl` (key pinning check) has no unit test: it needs the Android Keystore and
 DataStore. It is covered by the manual gate above.
 
+### Feature: Real sessions via hooks (M4, spec phase 4)
+- [x] Read the current hooks docs (Claude Code 2.1.283): uses the built-in `http` hook type, and `PermissionRequest` for instant "needs you"
+- [x] `/hook` endpoint: secret header, tunnel requests refused, empty 204, 2 MiB cap, rate-limited audit of rejections
+- [x] Session state machine incl. STALE after 15 min, cleanup of old sessions, `session.removed`
+- [x] Projects screen: add (folder picker) / reinstall / remove; merge-safe installer that never overwrites
+  user hooks, refuses invalid JSON and gitignores the settings file; per-project "last event" health
+- [x] SQLDelight migration v1 → v2 (project table), verified on the owner's existing database
+- [x] Tests: state machine (7), installer (6), endpoint (5); 105 tests in total
+- [x] **Gate:** a real `claude` session in a monitored folder showed on the Xiaomi with the correct states and
+  timeline (Prompt → Read → Finished → Session ended)
+
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
 |---|---|---|---|---|
@@ -139,7 +150,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M1 Local link (phase 1) | Done, gate verified on a real phone |
 | M2 Tunnel (phase 2) | Done: tunnel `agentmon` as the Windows service; pairing and live sessions verified via the tunnel; mobile-data check needs the owner |
 | M3 Pairing + mutual auth | Done, gate verified on a real phone |
-| M4 Hooks + state machine | Not started; next after the M3 gate |
+| M4 Hooks + state machine | Done, verified with real `claude` sessions on this PC and the Xiaomi |
 | M5 Wrapper + control | Not started |
 | M6 Headless resume | Not started |
 | M7 Notifications (foreground service) | Not started |
@@ -159,6 +170,9 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D11** Pairing grants are least-privilege by default: read-only; "All projects" is on by default in the approve dialog.
 - **D12** `/pair` holds the HTTP request for up to 90 s (under Cloudflare's 100 s origin timeout) instead of polling.
 - **D13** The pairing QR also works as a pasteable code (`AGENTMON1:`…), for emulators and phones without a camera.
+- **D15** Hooks use Claude Code's built-in `http` hook type instead of the spec's `agentmon-hook` helper: no executable, no
+  Windows quoting, and a down agent never blocks Claude. SessionStart (command hooks only) is not used.
+- **D16** `/hook` refuses anything carrying Cloudflare headers, since the tunnel also terminates on loopback.
 - **D14** Refusals (revoked, not paired, auth failed, desktop key mismatch) stop reconnecting and clear the cached
   sessions, since nothing from that computer can be trusted until the phone is paired again.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
@@ -166,8 +180,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
   through `RootViewModel`.
 
 ## 10. Known Gaps / TODO
-- Sessions are **demo data** (`DemoSessionSimulator`) until M4; run `--no-demo` once hooks exist.
-- After a disconnect, the session status shown is the last known one; STALE detection comes in M4.
+- Demo sessions are opt-in (`--demo`).
+- Whether an already-running Claude session picks up newly installed hooks is not documented; the UI says to restart it.
 - The composer, quick actions and terminal tab arrive in M5; they are not shown yet rather than stubbed.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.

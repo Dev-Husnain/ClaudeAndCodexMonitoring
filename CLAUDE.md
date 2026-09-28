@@ -22,7 +22,7 @@ Use the Android Studio JBR: `export JAVA_HOME="/c/Program Files/Android/Android 
 ```
 ./gradlew :app:assembleDebug                 # Android APK
 ./gradlew :app:installDebug                  # install on device/emulator
-./gradlew :desktop:run                       # desktop agent (demo sessions; add --args="--no-demo" to disable)
+./gradlew :desktop:run                       # desktop agent (real sessions from Projects; --args="--demo" adds fake ones)
 ./gradlew :app:testDebugUnitTest :shared:test :desktop:test   # all unit/integration tests
 ./gradlew :app:testDebugUnitTest --tests "com.claude.codex.ai.monitoring.data.repo.AgentStateReducerTest"   # one class
 ./gradlew :app:lintDebug                     # must report "No issues found"

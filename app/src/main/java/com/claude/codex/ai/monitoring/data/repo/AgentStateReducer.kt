@@ -44,6 +44,11 @@ object AgentStateReducer {
             )
         }
 
+        is Message.SessionRemoved -> state.copy(
+            sessions = state.sessions.filterNot { it.sessionId == message.sessionId },
+            timelines = state.timelines - message.sessionId,
+        )
+
         is Message.SessionEvent -> {
             // Only extend a timeline that was loaded; otherwise it would look complete when it is not.
             val existing = state.timelines[message.sessionId]

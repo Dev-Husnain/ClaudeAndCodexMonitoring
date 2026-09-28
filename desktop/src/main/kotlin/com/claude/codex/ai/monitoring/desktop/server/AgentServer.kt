@@ -1,5 +1,8 @@
 package com.claude.codex.ai.monitoring.desktop.server
 
+import com.claude.codex.ai.monitoring.desktop.hooks.HookInstaller
+import com.claude.codex.ai.monitoring.desktop.hooks.HookReceiver
+import com.claude.codex.ai.monitoring.desktop.hooks.HookResult
 import com.claude.codex.ai.monitoring.desktop.pairing.PairingManager
 import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
 import com.claude.codex.ai.monitoring.protocol.PairRequestDto
@@ -17,6 +20,7 @@ import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.origin
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -30,6 +34,7 @@ fun Application.agentModule(
     pairing: PairingManager,
     pairingLimiter: RateLimiter,
     version: String,
+    hooks: HookReceiver? = null,
 ) {
     install(WebSockets) {
         pingPeriodMillis = PING_PERIOD_MS
@@ -58,6 +63,24 @@ fun Application.agentModule(
                 ContentType.Application.Json,
                 response.status.httpStatus(),
             )
+        }
+        if (hooks != null) {
+            post(ProtocolConstants.PATH_HOOK) {
+                val viaTunnel = call.request.headers["CF-Connecting-IP"] != null || call.request.headers["Cf-Ray"] != null
+                val result = hooks.receive(
+                    secretHeader = call.request.headers[HookInstaller.SECRET_HEADER],
+                    viaTunnel = viaTunnel,
+                    body = call.receiveText().take(MAX_HOOK_BODY),
+                )
+                // Always an empty body: Claude Code treats any 2xx without JSON as "no decision".
+                call.respond(
+                    when (result) {
+                        HookResult.ACCEPTED, HookResult.IGNORED -> HttpStatusCode.NoContent
+                        HookResult.FORBIDDEN -> HttpStatusCode.Forbidden
+                        HookResult.BAD_REQUEST -> HttpStatusCode.BadRequest
+                    },
+                )
+            }
         }
         webSocket(ProtocolConstants.PATH_WS) { handler.handle(this, call.remoteAddress()) }
     }
@@ -88,13 +111,14 @@ class AgentServer(
     private val pairing: PairingManager,
     private val pairingLimiter: RateLimiter,
     private val version: String,
+    private val hooks: HookReceiver? = null,
     private val port: Int = ProtocolConstants.DEFAULT_PORT,
 ) {
     private var server: EmbeddedServer<*, *>? = null
 
     fun start() {
         server = embeddedServer(CIO, host = ProtocolConstants.LOOPBACK_HOST, port = port) {
-            agentModule(handler, pairing, pairingLimiter, version)
+            agentModule(handler, pairing, pairingLimiter, version, hooks)
         }.start(wait = false)
     }
 
@@ -108,3 +132,4 @@ private const val MAX_FRAME_BYTES = 1L * 1024 * 1024
 private const val PING_PERIOD_MS = 20_000L
 private const val TIMEOUT_MS = 60_000L
 private const val MAX_PAIR_BODY = 8 * 1024
+private const val MAX_HOOK_BODY = 2 * 1024 * 1024

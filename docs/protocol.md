@@ -30,6 +30,7 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | D→C | `ready` | `computer`, `projects`, `sessions` |
 | D→C | `session.update` | `session` |
 | D→C | `session.event` | `sessionId`, `event` |
+| D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |
 | D→C | `session.history.result` | `sessionId`, `events` (oldest first), `hasMore` |
 | D→C | `terminal.chunk` | `sessionId`, `data` *(phase 5)* |
 | D→C | `ack` | `ackId`, `result: DELIVERED/FAILED`, `detail?` |
@@ -72,6 +73,31 @@ Error codes: `AUTH_FAILED`, `NOT_PAIRED`, `FORBIDDEN_PROJECT`, `READ_ONLY`, `SES
    device: 5 failures per 5 min.
 
 Heartbeat: the phone sends `ping` every 25 s and treats 60 s without any frame as a dead socket.
+
+## Claude Code hooks → agent (phase 4)
+
+Claude Code posts hook events straight to `http://127.0.0.1:8787/hook` using its built-in **HTTP hook
+type**, so there is no helper executable and no shell quoting on Windows. The desktop's **Projects** screen
+writes these entries into `<project>/.claude/settings.local.json`, merging with any existing hooks:
+
+```json
+{ "type": "http", "url": "http://127.0.0.1:8787/hook", "timeout": 5,
+  "headers": { "X-Agentmon-Secret": "<secret from %APPDATA%\AgentMon\hook-secret>" } }
+```
+
+They cover `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`,
+`Notification`, `Stop`, `StopFailure` and `SessionEnd`. `SessionStart` supports only command hooks, so a
+session appears on its first prompt or tool call instead. The agent answers with an empty 204, so Claude sees
+"no decision". If the agent is not running, Claude Code treats the failed connection as a non-blocking error
+and carries on.
+
+`/hook` refuses a missing or wrong secret, and refuses **any request that came through the Cloudflare
+tunnel** (identified by the `CF-Connecting-IP` / `Cf-Ray` headers), because the tunnel also terminates on
+127.0.0.1.
+
+State machine: prompt or tool → RUNNING; PermissionRequest or a permission/elicitation notification →
+WAITING_INPUT; Stop → IDLE; StopFailure → ERROR; SessionEnd → ENDED; RUNNING with 15 minutes of silence →
+STALE.
 
 ## Limits
 

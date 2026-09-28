@@ -72,6 +72,11 @@ sealed interface Message {
     @SerialName("session.update")
     data class SessionUpdate(val session: SessionDto) : Message
 
+    /** The desktop forgot a session (ended long ago, or its project was removed). Not in the original spec. */
+    @Serializable
+    @SerialName("session.removed")
+    data class SessionRemoved(val sessionId: String, val projectId: String) : Message
+
     @Serializable
     @SerialName("session.event")
     data class SessionEvent(val sessionId: String, val event: TimelineEventDto) : Message

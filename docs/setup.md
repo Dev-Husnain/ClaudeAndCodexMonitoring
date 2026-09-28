@@ -22,7 +22,7 @@ Each part says when it is needed. Parts A and B are enough to run the current bu
    The tunnel keeps running as a service, but it can only reach the phone while this agent is running
    (otherwise the health URL returns 502). Auto-start for the agent comes with packaging in phase 8.
    A window titled **AgentMon** opens and a tray icon appears. Closing the window keeps it running in the
-   tray; use **Quit** in the tray menu to stop it. It runs demo sessions by default (`--no-demo` turns them off).
+   tray; use **Quit** in the tray menu to stop it. Real sessions come from the projects you add (see part D). `--demo` adds fake sessions for trying the phone.
    Check it with `curl http://127.0.0.1:8787/health`.
 2. Connect a phone or emulator:
    - **Emulator:** start any AVD from Android Studio's Device Manager.
@@ -91,7 +91,10 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
 
 ## D. Later phases
 
-- **Phase 4 (hooks):** choose a test project. The desktop app's *Add project* action writes hooks into
-  that project's `.claude/settings.local.json`, which is never committed.
+- **Phase 4: real sessions.** In the desktop app, go to **Projects**, click **Add project** and choose the folder you
+  run Claude Code in (for example your Android Studio project). AgentMon adds its hooks to that project's
+  `.claude/settings.local.json`, keeps your own hooks, and adds the file to `.gitignore` if needed. Start a
+  new Claude session there, or restart a running one, and it shows up on the phone. **Remove** takes out
+  only AgentMon's hooks. Demo sessions are off now; start the agent with `--demo` to see them.
 - **Phase 7 (notifications):** allow notifications for AgentMon, and turn off battery optimisation for it
   (Settings → Apps → AgentMon → Battery → Unrestricted; Xiaomi/MIUI also needs *Autostart*).

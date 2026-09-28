@@ -157,6 +157,7 @@ class ClientHandler(
     private fun Message.projectIdOrNull(): String? = when (this) {
         is Message.SessionUpdate -> session.projectId
         is Message.SessionEvent -> registry.projectOf(sessionId)
+        is Message.SessionRemoved -> projectId
         else -> null
     }
 
