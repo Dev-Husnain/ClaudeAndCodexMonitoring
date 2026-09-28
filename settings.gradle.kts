@@ -24,4 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "ClaudeMonitoring"
 include(":app")
+include(":shared")
+include(":desktop")
  
