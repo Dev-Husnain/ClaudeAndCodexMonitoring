@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AgentMon" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/color_0b0f1a</item>
+    </style>
+</resources>

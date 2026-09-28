@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Versions are deliberately pinned to releases built against Kotlin 2.2 so the toolchain is not
+         upgraded opportunistically (guidelines 5.19, PROJECT-GUIDE.md section 4). -->
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+</lint>
