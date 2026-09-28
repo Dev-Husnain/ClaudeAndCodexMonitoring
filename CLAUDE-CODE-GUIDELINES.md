@@ -20,31 +20,21 @@ There must be exactly one copy of every rule, and it lives in this file.
 Fill this in per project. Everything else in the file stays the same.
 
 ```
-App name:          JK Media Downloader  (package com.media.downloader)
-What it does:      Downloads videos/images/audio from social media and other supported sites.
-                    Two ways in: the user pastes a link, or opens the in-app browser, browses
-                    to the media and downloads it from there. Downloaded media is saved to the
-                    device and listed in the app. Supported sites = whatever
-                    MediaDownloaderLibrary supports.
-Design source:     Figma — <paste Figma URL here>
-Execution mode:    Guided
-UI toolkit:        Compose
-Backend / APIs:    None to build. Link parsing and media URL extraction are done entirely by
-                    the client's library com.github.Dev-Husnain:MediaDownloaderLibrary:0.1.1
-                    (JitPack). Do NOT write your own extraction, scraping or API calls.
-Milestones:        leave blank for the agent to propose them
+App name:          AgentMon  (package com.claude.codex.ai.monitoring)
+What it does:      Remote monitor & control for Claude Code / Codex sessions: a phone app that
+                    connects securely to the owner's computer, shows live session status and
+                    activity, and sends instructions back. Full spec: AGENT_MONITOR_SPEC.md.
+Design source:     No Figma. Spec §9 visual brief, snapshotted in design/tokens.md.
+Execution mode:    Hybrid
+UI toolkit:        Compose (Android) + Compose Multiplatform (desktop)
+Backend / APIs:    Self-built desktop agent in this repo (:desktop, Ktor on 127.0.0.1:8787) and
+                    the shared protocol (:shared). No third-party backend.
+Milestones:        M0–M8 as listed in PROJECT-GUIDE.md §8 (mapped to spec §10 phases)
 Notes:             - DI: Koin. minSdk 24, target = the project's current targetSdk.
-                    - MediaDownloaderLibrary: wrap it inside data/ behind a domain repository
-                      interface (e.g. MediaRepository) so presentation never imports it. Read its
-                      public API from the resolved artifact before designing the wrapper; do not
-                      guess method names. Add it through the version catalog, and add the JitPack
-                      repository (https://jitpack.io) to settings.gradle.kts.
-                    - Implement exactly what the Figma UI shows on top of that library; screens
-                      and states come from the design, behaviour from the library.
-                    - Downloads must survive leaving the screen (WorkManager or a foreground
-                      service, §5.15) and be saved via MediaStore across API 24+ (scoped storage).
-                    - Orientation, locales, ads/monetisation: take from the design; ask in intake
-                      if unclear.
+                    - Owner rule: systemBarsPadding() on every screen's content, never on
+                      MainActivity; status/nav bar icons follow the selected theme.
+                    - Push notifications: foreground service (spec §11 option A).
+                    - Security rules in spec §6 are non-negotiable.
 ```
 
 **Execution modes.** **Guided** stops after every milestone for approval. **Hybrid** runs

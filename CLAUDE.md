@@ -4,35 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Read first
 
-- `AGENT_MONITOR_SPEC.md`: the product spec for **AgentMon** and the single source of truth for *what* to build. It covers the desktop agent, mobile app, WebSocket protocol, security model, UI brief and build phases 0–8.
-- `CLAUDE-CODE-GUIDELINES.md`: the permanent engineering and workflow rules (architecture, naming, DI, Compose conventions, milestones, git, definition of done). Follow it for *how* to build. Do not copy its rules into this file. It says it must not be edited during a build, and it names `PROJECT-GUIDE.md` as the progress record the agent maintains.
+- `CLAUDE-CODE-GUIDELINES.md` holds the permanent engineering and workflow rules plus the Project Inputs. Follow it; don't copy its rules here.
+- `AGENT_MONITOR_SPEC.md` is the product spec: what to build, the security model and phases 0–8.
+- `PROJECT-GUIDE.md` is the living record of architecture, milestone progress, decisions and known gaps. Resume work from its §8, and update it in the same commit as the work.
+- `docs/` contains `setup.md` (owner setup steps), `protocol.md` and `threat-model.md`. `design/tokens.md` is the design snapshot the theme files are generated from.
 
-**Known conflict:** the "Project inputs" block in `CLAUDE-CODE-GUIDELINES.md` was left over from another project ("JK Media Downloader", `com.media.downloader`). For this repo, take app identity, scope and requirements from `AGENT_MONITOR_SPEC.md`. Raise the conflict with the owner instead of acting on those inputs.
+## Modules
 
-## Current state
-
-This is a fresh Android Studio template. It has a single `:app` module (package `com.claude.codex.ai.monitoring`) containing only `MainActivity` and a Compose theme. Nothing from the spec has been built yet, and git has not been initialized.
-
-The spec's target layout is a Gradle multi-module build: `shared/` (KMP protocol models, envelope and crypto helpers), `desktop/` (Compose Desktop, Ktor server on `127.0.0.1:8787`, hook receiver, pty4j injector) and `mobile/` (the Android app). Spec §14 says to propose the exact module structure and get the owner's confirmation before generating code at scale.
+- `:shared` is Kotlin/JVM with the wire protocol (`Message`, `ProtocolCodec`, DTOs). It is used by both apps.
+- `:app` is the Android app (Compose, Koin, Navigation 3, Ktor client, DataStore).
+- `:desktop` is the Compose Desktop tray app plus the Ktor server, bound to `127.0.0.1:8787` only.
 
 ## Build and test
 
-The toolchain is Gradle 9.6 (wrapper), AGP 9.4.1, Kotlin 2.2.10 and Compose BOM 2026.02.01. `compileSdk`/`targetSdk` are 37 and `minSdk` is 24. Java source/target is 11. Dependencies and plugins go through `gradle/libs.versions.toml`, and the configuration cache is on. On Windows, use `gradlew.bat` or `./gradlew` from Git Bash.
+Use the Android Studio JBR: `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"` (Git Bash) before running `./gradlew`.
 
 ```
-./gradlew assembleDebug                      # build debug APK
-./gradlew installDebug                       # install on a connected device/emulator
-./gradlew testDebugUnitTest                  # JVM unit tests
-./gradlew testDebugUnitTest --tests "com.claude.codex.ai.monitoring.ExampleUnitTest"   # single test class (append .method for one test)
-./gradlew connectedDebugAndroidTest          # instrumented tests (device required)
-./gradlew lint                               # Android lint
+./gradlew :app:assembleDebug                 # Android APK
+./gradlew :app:installDebug                  # install on device/emulator
+./gradlew :desktop:run                       # desktop agent (demo sessions; add --args="--no-demo" to disable)
+./gradlew :app:testDebugUnitTest :shared:test :desktop:test   # all unit/integration tests
+./gradlew :app:testDebugUnitTest --tests "com.claude.codex.ai.monitoring.data.repo.AgentStateReducerTest"   # one class
+./gradlew :app:lintDebug                     # must report "No issues found"
+adb reverse tcp:8787 tcp:8787                # lets the phone reach the laptop agent over USB
 ```
 
-R8 keep rules are in `app/src/main/keepRules/` (the AGP 9 location), not in `proguard-rules.pro`. Release optimization is currently disabled.
+## Gotchas
 
-## Non-negotiables from the spec (easy to violate by accident)
-
-- Never bind the desktop agent to a public interface (only `127.0.0.1`), and never weaken pairing or mutual auth "to make it work" (spec §6, §14.6).
-- Before implementing hooks, check exact Claude Code hook event names and payloads against the current official docs. Also verify headless `-p` billing and auth against the docs. The spec says not to trust its own payload shapes.
-- Put Claude Code UI-dependent keystrokes and prompt detection behind `PromptProfile`, and agent-specific logic behind `AgentAdapter`.
-- When a step needs the owner (Cloudflare tunnel/DNS, Firebase, installing tools), stop and tell them exactly what to do (spec §3).
+- Library versions are pinned to releases built against Kotlin ≤ 2.2 (the project is on Kotlin 2.2.10). Check a library's Kotlin stdlib requirement before bumping it. Lint's "newer version" checks are disabled on purpose in `app/lint.xml`.
+- ViewModels run an endless relative-time ticker. In tests, give `Dispatchers.Main` its own `StandardTestDispatcher` and call `scheduler.runCurrent()`, because `runTest` draining it would hang (see `HomeViewModelTest`).
+- R8 keep rules live in `app/src/main/keepRules/` (AGP 9), not in `proguard-rules.pro`.
+- The Bash tool can fail on apostrophes inside heredocs; write source files with the Write tool.
