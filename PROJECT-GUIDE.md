@@ -137,7 +137,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 |---|---|
 | M0 Foundation | Done |
 | M1 Local link (phase 1) | Done, gate verified on a real phone |
-| M2 Tunnel (phase 2) | Nameservers on Cloudflare (verified); cloudflared setup next, with the owner |
+| M2 Tunnel (phase 2) | Done: tunnel `agentmon` as the Windows service; pairing and live sessions verified via the tunnel; mobile-data check needs the owner |
 | M3 Pairing + mutual auth | Done, gate verified on a real phone |
 | M4 Hooks + state machine | Not started; next after the M3 gate |
 | M5 Wrapper + control | Not started |
@@ -170,6 +170,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - After a disconnect, the session status shown is the last known one; STALE detection comes in M4.
 - The composer, quick actions and terminal tab arrive in M5; they are not shown yet rather than stubbed.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
+- The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.
 - Default phone name comes from the system (MIUI reports the model, e.g. "M2101K7AG"); it can be edited before sending.
 - Not yet checked: API 24 device, tablet window, TalkBack pass (M8 QA).
 

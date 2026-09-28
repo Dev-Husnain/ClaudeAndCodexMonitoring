@@ -15,10 +15,12 @@ Each part says when it is needed. Parts A and B are enough to run the current bu
 
 ## B. Run it locally (phase 1)
 
-1. Start the desktop agent from the project root:
+1. Start the desktop agent: double-click `scripts\start-agent.cmd`, or from the project root run:
    ```
    gradlew.bat :desktop:run
    ```
+   The tunnel keeps running as a service, but it can only reach the phone while this agent is running
+   (otherwise the health URL returns 502). Auto-start for the agent comes with packaging in phase 8.
    A window titled **AgentMon** opens and a tray icon appears. Closing the window keeps it running in the
    tray; use **Quit** in the tray menu to stop it. It runs demo sessions by default (`--no-demo` turns them off).
    Check it with `curl http://127.0.0.1:8787/health`.
@@ -75,9 +77,14 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
 8. Make it start with Windows. In an **Administrator** terminal, run `cloudflared service install`. The
    service runs as SYSTEM and reads its config from
    `C:\Windows\System32\config\systemprofile\.cloudflared\`. Copy `config.yml` and `<TUNNEL-ID>.json`
-   there and change `credentials-file` in the copied `config.yml` to the new path. Then run
-   `sc stop cloudflared` followed by `sc start cloudflared`, and reboot once to confirm the health URL
-   still works.
+   there and change `credentials-file` in the copied `config.yml` to the new path.
+   **Gotcha (seen on this machine):** the installed service starts with no arguments and exits at once. Set
+   its command line explicitly in the registry, `HKLM\SYSTEM\CurrentControlSet\Services\cloudflared\ImagePath` =
+   `"C:\Program Files (x86)\cloudflared\cloudflared.exe" --config "C:\Windows\System32\config\systemprofile\.cloudflared\config.yml" --logfile "C:\Windows\System32\config\systemprofile\.cloudflared\cloudflared.log" tunnel run`.
+   Then run `Start-Service cloudflared`. Check `https://agent.appsdev.qzz.io/health`.
+   (Done on 2026-09-28: tunnel `agentmon`, id `95be45b0-40ea-4f27-b345-427818a58eac`, service set to Automatic.)
+   If the PC says "could not resolve host" right after setup, the router's DNS is still caching the old
+   "not found" answer; it clears within about 30 minutes.
 9. Pair the phone with the **Anywhere · tunnel** option. The QR carries `https://agent.appsdev.qzz.io`, so
    the phone then works over mobile data. A phone paired over USB has to be paired again this way.
 10. Cloudflare Access (Zero Trust) is optional and deferred to phase 8.
