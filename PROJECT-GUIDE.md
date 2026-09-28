@@ -88,7 +88,7 @@ All versions are pinned to releases built against Kotlin ≤ 2.2, so the project
 - [x] Session detail: status header and activity timeline (history + live events)
 - [x] Settings: theme mode, validated server address (wss required off loopback), haptics, about
 - [x] Unit tests: reducer, back-off, overview use case, URL validation, relative time, HomeViewModel (23)
-- [ ] **Gate (owner):** verify on the real phone via `adb reverse` (verified on the emulator only)
+- [x] **Gate:** verified on Pixel_9a emulator (API 36) and Xiaomi M2101K7AG (API 31) via `adb reverse` over wireless adb
 Notes: sessions are demo data until phase 4.
 
 ## 6. Screen ↔ Design Map
@@ -110,7 +110,7 @@ Connected / Reconnecting / Offline), and `AppSettingsModel` (theme, server URL, 
 | Milestone | Status |
 |---|---|
 | M0 Foundation | Done |
-| M1 Local link (phase 1) | Done; the real-phone gate needs the owner |
+| M1 Local link (phase 1) | Done, gate verified on a real phone |
 | M2 Tunnel (phase 2) | **Waiting on owner**: docs/setup.md part C |
 | M3 Pairing + mutual auth | Not started; independent of M2, next |
 | M4 Hooks + state machine | Not started (blocked on M3; real data needs auth) |
