@@ -1,6 +1,5 @@
 package com.claude.codex.ai.monitoring.desktop.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +11,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.claude.codex.ai.monitoring.desktop.session.RegistryState
 import com.claude.codex.ai.monitoring.desktop.ui.components.DesktopCard
+import com.claude.codex.ai.monitoring.desktop.ui.components.Pill
 import com.claude.codex.ai.monitoring.desktop.ui.components.SessionTile
 import com.claude.codex.ai.monitoring.desktop.ui.components.StatusDot
 import com.claude.codex.ai.monitoring.desktop.ui.theme.DesktopTheme
@@ -97,16 +96,4 @@ fun OverviewScreen(
                 }
             }
     }
-}
-
-@Composable
-private fun Pill(text: String, color: androidx.compose.ui.graphics.Color) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = color,
-        modifier = Modifier
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-    )
 }

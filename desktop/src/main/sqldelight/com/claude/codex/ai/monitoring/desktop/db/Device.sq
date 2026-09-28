@@ -1,0 +1,32 @@
+-- Paired phones and what each may see and do (spec 6.2, 6.4).
+CREATE TABLE device (
+    device_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    public_key TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    can_send_input INTEGER NOT NULL DEFAULT 0,
+    all_projects INTEGER NOT NULL DEFAULT 0,
+    -- Newline-separated project ids; ignored when all_projects = 1.
+    project_ids TEXT NOT NULL DEFAULT '',
+    paired_at INTEGER NOT NULL,
+    last_seen_at INTEGER
+);
+
+selectAll:
+SELECT * FROM device ORDER BY paired_at DESC;
+
+selectById:
+SELECT * FROM device WHERE device_id = ?;
+
+upsert:
+INSERT OR REPLACE INTO device(device_id, name, public_key, fingerprint, can_send_input, all_projects, project_ids, paired_at, last_seen_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateGrant:
+UPDATE device SET can_send_input = ?, all_projects = ?, project_ids = ? WHERE device_id = ?;
+
+updateLastSeen:
+UPDATE device SET last_seen_at = ? WHERE device_id = ?;
+
+deleteById:
+DELETE FROM device WHERE device_id = ?;

@@ -1,26 +1,21 @@
 package com.claude.codex.ai.monitoring.desktop.server
 
-import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
-import com.claude.codex.ai.monitoring.protocol.ComputerDto
+import com.claude.codex.ai.monitoring.desktop.TestAgent
+import com.claude.codex.ai.monitoring.desktop.devices.DeviceGrant
+import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
+import com.claude.codex.ai.monitoring.protocol.AgentCrypto
+import com.claude.codex.ai.monitoring.protocol.AuthPayloads
 import com.claude.codex.ai.monitoring.protocol.ControlMode
 import com.claude.codex.ai.monitoring.protocol.ErrorCode
-import com.claude.codex.ai.monitoring.protocol.EventKind
 import com.claude.codex.ai.monitoring.protocol.Message
-import com.claude.codex.ai.monitoring.protocol.ProjectDto
-import com.claude.codex.ai.monitoring.protocol.ProtocolCodec
 import com.claude.codex.ai.monitoring.protocol.SessionDto
 import com.claude.codex.ai.monitoring.protocol.SessionState
-import com.claude.codex.ai.monitoring.protocol.TimelineEventDto
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readText
-import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -28,24 +23,13 @@ import kotlin.test.assertTrue
 
 class AgentServerTest {
 
-    private val codec = ProtocolCodec()
-    private val registry = SessionRegistry(ComputerDto("c1", "Laptop")).apply {
-        upsertProject(ProjectDto("p1", "App"))
-        upsertSession(SessionDto("s1", "p1", SessionState.RUNNING, ControlMode.MONITOR_ONLY, 1, 2))
-        addEvent(TimelineEventDto("e1", "s1", 3, EventKind.PROMPT, "Prompt"))
-    }
-    private val connections = ConnectionTracker()
+    private val agent = TestAgent()
 
     private fun ApplicationTestBuilder.setUp() {
-        application { agentModule(ClientHandler(registry, codec, connections, helloTimeoutMs = 2_000), "test") }
+        application { agentModule(agent.handler, agent.pairing, RateLimiter(), "test") }
     }
 
-    private suspend fun DefaultClientWebSocketSession.sendMessage(message: Message) =
-        send(Frame.Text(codec.encode(message)))
-
-    private suspend fun DefaultClientWebSocketSession.receiveMessage(): Message = withTimeout(5_000) {
-        codec.decode((incoming.receive() as Frame.Text).readText()).getOrThrow().message
-    }
+    private fun ApplicationTestBuilder.ws() = createClient { install(WebSockets) }
 
     @Test
     fun `health endpoint reports ok`() = testApplication {
@@ -54,61 +38,140 @@ class AgentServerTest {
     }
 
     @Test
-    fun `hello receives the ready snapshot then ping pong and history work`() = testApplication {
+    fun `paired device authenticates and gets ping pong and history`() = testApplication {
         setUp()
-        val ws = createClient { install(WebSockets) }
-        ws.webSocket("/ws") {
-            sendMessage(Message.Hello("device-1", "1.0"))
-            val ready = assertIs<Message.Ready>(receiveMessage())
-            assertEquals(listOf("s1"), ready.sessions.map { it.sessionId })
-            assertEquals(1, connections.connected.value["device-1"])
-
-            sendMessage(Message.Ping)
-            assertEquals(Message.Pong, receiveMessage())
-
-            sendMessage(Message.SessionHistory("s1"))
-            val history = assertIs<Message.SessionHistoryResult>(receiveMessage())
-            assertEquals(listOf("e1"), history.events.map { it.eventId })
+        val phone = agent.pairDevice(TestAgent.ReadOnlyAll)
+        ws().webSocket("/ws") {
+            with(agent) {
+                val ready = assertIs<Message.Ready>(authenticate(phone))
+                assertEquals(setOf("s1", "s2"), ready.sessions.map { it.sessionId }.toSet())
+                assertEquals(false, ready.canSendInput)
+                sendMessage(Message.Ping)
+                assertEquals(Message.Pong, receiveMessage())
+                sendMessage(Message.SessionHistory("s1"))
+                assertIs<Message.SessionHistoryResult>(receiveMessage())
+            }
         }
     }
 
     @Test
-    fun `live registry changes are pushed to the phone`() = testApplication {
+    fun `unpaired device is rejected before any data`() = testApplication {
         setUp()
-        val ws = createClient { install(WebSockets) }
-        ws.webSocket("/ws") {
-            sendMessage(Message.Hello("device-1", "1.0"))
-            assertIs<Message.Ready>(receiveMessage())
-            // Round-trip a ping so the server has definitely subscribed to updates.
-            sendMessage(Message.Ping)
-            assertEquals(Message.Pong, receiveMessage())
-
-            registry.upsertSession(SessionDto("s1", "p1", SessionState.WAITING_INPUT, ControlMode.MONITOR_ONLY, 1, 9))
-            val update = assertIs<Message.SessionUpdate>(receiveMessage())
-            assertEquals(SessionState.WAITING_INPUT, update.session.state)
+        ws().webSocket("/ws") {
+            with(agent) {
+                sendMessage(Message.Hello("unknown-device", "test"))
+                assertEquals(ErrorCode.NOT_PAIRED, assertIs<Message.Error>(receiveMessage()).code)
+            }
         }
     }
 
     @Test
-    fun `a first message other than hello is rejected`() = testApplication {
+    fun `signature from another key is rejected`() = testApplication {
         setUp()
-        val ws = createClient { install(WebSockets) }
-        ws.webSocket("/ws") {
-            sendMessage(Message.Ping)
-            val error = assertIs<Message.Error>(receiveMessage())
-            assertEquals(ErrorCode.BAD_REQUEST, error.code)
+        val phone = agent.pairDevice(TestAgent.ReadOnlyAll)
+        val impostor = AgentCrypto.generateKeyPair()
+        ws().webSocket("/ws") {
+            with(agent) {
+                val reply = authenticate(phone) { nonce ->
+                    AgentCrypto.sign(impostor.private, AuthPayloads.auth(nonce, phone.deviceId, identity.fingerprint))
+                }
+                assertEquals(ErrorCode.AUTH_FAILED, assertIs<Message.Error>(reply).code)
+            }
         }
     }
 
     @Test
-    fun `input is refused until control is implemented`() = testApplication {
+    fun `replayed auth signature from an earlier nonce is rejected`() = testApplication {
         setUp()
-        val ws = createClient { install(WebSockets) }
-        ws.webSocket("/ws") {
-            sendMessage(Message.Hello("device-1", "1.0"))
-            assertIs<Message.Ready>(receiveMessage())
-            sendMessage(Message.SendInput("s1", "continue"))
-            assertEquals(ErrorCode.SESSION_NOT_CONTROLLABLE, assertIs<Message.Error>(receiveMessage()).code)
+        val phone = agent.pairDevice(TestAgent.ReadOnlyAll)
+        var captured: String? = null
+        ws().webSocket("/ws") {
+            with(agent) {
+                authenticate(phone) { nonce ->
+                    AgentCrypto.sign(phone.keys.private, AuthPayloads.auth(nonce, phone.deviceId, identity.fingerprint)).also { captured = it }
+                }
+            }
+        }
+        ws().webSocket("/ws") {
+            with(agent) {
+                val reply = authenticate(phone) { _ -> captured!! }
+                assertEquals(ErrorCode.AUTH_FAILED, assertIs<Message.Error>(reply).code)
+            }
+        }
+    }
+
+    @Test
+    fun `device only sees and receives its granted projects`() = testApplication {
+        setUp()
+        val phoneA = agent.pairDevice(DeviceGrant(canSendInput = false, allProjects = false, projectIds = setOf("p1")))
+        ws().webSocket("/ws") {
+            with(agent) {
+                val ready = assertIs<Message.Ready>(authenticate(phoneA))
+                assertEquals(listOf("p1"), ready.projects.map { it.projectId })
+                assertEquals(listOf("s1"), ready.sessions.map { it.sessionId })
+
+                sendMessage(Message.SessionHistory("s2"))
+                assertEquals(ErrorCode.FORBIDDEN_PROJECT, assertIs<Message.Error>(receiveMessage()).code)
+
+                // A project B update must never arrive; the following project A update must.
+                registry.upsertSession(SessionDto("s2", "p2", SessionState.WAITING_INPUT, ControlMode.WRAPPER, 1, 3))
+                registry.upsertSession(SessionDto("s1", "p1", SessionState.IDLE, ControlMode.WRAPPER, 1, 4))
+                val update = assertIs<Message.SessionUpdate>(receiveMessage())
+                assertEquals("s1", update.session.sessionId)
+            }
+        }
+    }
+
+    @Test
+    fun `read-only device cannot send input`() = testApplication {
+        setUp()
+        val phone = agent.pairDevice(TestAgent.ReadOnlyAll)
+        ws().webSocket("/ws") {
+            with(agent) {
+                assertIs<Message.Ready>(authenticate(phone))
+                sendMessage(Message.SendInput("s1", "rm -rf"))
+                assertEquals(ErrorCode.READ_ONLY, assertIs<Message.Error>(receiveMessage()).code)
+            }
+        }
+    }
+
+    @Test
+    fun `revoked device is told and disconnected immediately`() = testApplication {
+        setUp()
+        val phone = agent.pairDevice(TestAgent.ReadOnlyAll)
+        ws().webSocket("/ws") {
+            with(agent) {
+                assertIs<Message.Ready>(authenticate(phone))
+                sendMessage(Message.Ping)
+                assertEquals(Message.Pong, receiveMessage())
+                devices.remove(phone.deviceId)
+                hub.revoke(phone.deviceId)
+                assertEquals(Message.Revoked, receiveMessage())
+            }
+        }
+        ws().webSocket("/ws") {
+            with(agent) {
+                sendMessage(Message.Hello(phone.deviceId, "test"))
+                assertEquals(ErrorCode.NOT_PAIRED, assertIs<Message.Error>(receiveMessage()).code)
+            }
+        }
+    }
+
+    @Test
+    fun `repeated failures are rate limited`() = testApplication {
+        setUp()
+        repeat(3) {
+            ws().webSocket("/ws") {
+                with(agent) {
+                    sendMessage(Message.Hello("nobody-$it", "test"))
+                    receiveMessage()
+                }
+            }
+        }
+        ws().webSocket("/ws") {
+            with(agent) {
+                assertEquals(ErrorCode.RATE_LIMITED, assertIs<Message.Error>(receiveMessage()).code)
+            }
         }
     }
 }

@@ -64,6 +64,8 @@ sealed interface Message {
         val computer: ComputerDto,
         val projects: List<ProjectDto>,
         val sessions: List<SessionDto>,
+        /** False for read-only devices (spec 6.2 grant); the phone hides input controls. */
+        val canSendInput: Boolean = false,
     ) : Message
 
     @Serializable

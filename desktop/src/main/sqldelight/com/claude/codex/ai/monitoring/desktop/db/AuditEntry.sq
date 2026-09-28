@@ -1,0 +1,18 @@
+-- Security-relevant events only: pairing, auth results, revocations. Never prompt or terminal content.
+CREATE TABLE audit_entry (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    message TEXT NOT NULL,
+    device_id TEXT,
+    remote TEXT
+);
+
+insert:
+INSERT INTO audit_entry(ts, category, message, device_id, remote) VALUES (?, ?, ?, ?, ?);
+
+selectRecent:
+SELECT * FROM audit_entry ORDER BY id DESC LIMIT ?;
+
+trimTo:
+DELETE FROM audit_entry WHERE id NOT IN (SELECT id FROM audit_entry ORDER BY id DESC LIMIT ?);

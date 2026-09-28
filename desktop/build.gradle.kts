@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.sqldelight)
 }
 
 java {
@@ -27,12 +28,22 @@ dependencies {
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.websockets)
     implementation(libs.slf4j.simple)
+    implementation(libs.sqldelight.sqlite.driver)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.client.websockets)
+}
+
+sqldelight {
+    databases {
+        create("AgentMonDatabase") {
+            packageName.set("com.claude.codex.ai.monitoring.desktop.db")
+        }
+    }
 }
 
 compose.desktop {
