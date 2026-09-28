@@ -1,6 +1,7 @@
 package com.claude.codex.ai.monitoring.presentation.pair
 
 import com.claude.codex.ai.monitoring.R
+import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.domain.models.PairingError
 import com.claude.codex.ai.monitoring.domain.usecase.PairDeviceUseCase
 import com.claude.codex.ai.monitoring.domain.usecase.ParsePairingCodeUseCase
@@ -92,7 +93,7 @@ class PairViewModelTest {
         vm.onEvent(PairEvent.OnSendRequest)
         repository.nextResult.complete(Result.failure(PairingError.DesktopMismatch()))
         run()
-        assertEquals(R.string.pair_error_mismatch, assertIs<PairStep.Failed>(vm.pairUiState.value.step).message)
+        assertEquals(UiText.Res(R.string.pair_error_mismatch), assertIs<PairStep.Failed>(vm.pairUiState.value.step).message)
 
         vm.onEvent(PairEvent.OnRetry)
         assertEquals(PairStep.Scan, vm.pairUiState.value.step)
@@ -109,5 +110,17 @@ class PairViewModelTest {
         assertIs<PairStep.Confirm>(vm.pairUiState.value.step)
         assertEquals(R.string.pair_error_name, vm.pairUiState.value.nameError)
         assertTrue(repository.requests.isEmpty())
+    }
+
+    @Test
+    fun `unreachable tunnel address says to use USB instead`() {
+        val vm = viewModel()
+        vm.onEvent(PairEvent.OnCodeScanned(validCode))
+        run()
+        vm.onEvent(PairEvent.OnSendRequest)
+        repository.nextResult.complete(Result.failure(PairingError.Network()))
+        run()
+        val failed = assertIs<PairStep.Failed>(vm.pairUiState.value.step)
+        assertEquals(UiText.Res(R.string.pair_error_network_remote, listOf("agent.example")), failed.message)
     }
 }

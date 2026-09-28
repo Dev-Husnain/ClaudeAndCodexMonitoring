@@ -107,8 +107,10 @@ Notes: sessions are demo data until phase 4.
   Devices & security (unpair), Home "pair again" states, read-only pill
 - [x] Removed the dev-only server-address setting; the QR carries the address now
 - [x] Unit tests: parse code, pair flow VM, refusal handling, home unauthorized/read-only (34 app tests)
-- [ ] **Gate (owner):** pair the Xiaomi by scanning the QR over USB; approve; revoke from Devices and
-  confirm the phone shows "This phone was removed"
+- [x] **Gate:** on Xiaomi M2101K7AG (API 31) over USB/adb reverse: paired (code entry), approve required
+  (nothing is approved without a click, checked for 20 s), matching keys on both screens, live grant change
+  (read-only pill disappeared), revoke gives "This phone was removed", re-pair works, and the phone
+  signs in again automatically after the desktop restarts. The camera QR scan itself was not tested by me.
 Notes: `PairingRepositoryImpl` (key pinning check) has no unit test: it needs the Android Keystore and
 DataStore. It is covered by the manual gate above.
 
@@ -136,7 +138,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M0 Foundation | Done |
 | M1 Local link (phase 1) | Done, gate verified on a real phone |
 | M2 Tunnel (phase 2) | Nameservers on Cloudflare (verified); cloudflared setup next, with the owner |
-| M3 Pairing + mutual auth | Done; real-phone pairing gate needs the owner |
+| M3 Pairing + mutual auth | Done, gate verified on a real phone |
 | M4 Hooks + state machine | Not started; next after the M3 gate |
 | M5 Wrapper + control | Not started |
 | M6 Headless resume | Not started |
@@ -167,7 +169,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - Sessions are **demo data** (`DemoSessionSimulator`) until M4; run `--no-demo` once hooks exist.
 - After a disconnect, the session status shown is the last known one; STALE detection comes in M4.
 - The composer, quick actions and terminal tab arrive in M5; they are not shown yet rather than stubbed.
-- The desktop pairing route defaults to the tunnel; choose "USB · adb reverse" until M2 is set up.
+- The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
+- Default phone name comes from the system (MIUI reports the model, e.g. "M2101K7AG"); it can be edited before sending.
 - Not yet checked: API 24 device, tablet window, TalkBack pass (M8 QA).
 
 ## 11. How to Build & Run

@@ -2,6 +2,7 @@ package com.claude.codex.ai.monitoring.presentation.pair
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
+import com.claude.codex.ai.monitoring.core.utils.UiText
 
 @Immutable
 data class PairUiState(
@@ -23,7 +24,7 @@ sealed interface PairStep {
 
     data class Success(val computerName: String, val canSendInput: Boolean) : PairStep
 
-    data class Failed(@param:StringRes val message: Int) : PairStep
+    data class Failed(val message: UiText) : PairStep
 }
 
 @Immutable

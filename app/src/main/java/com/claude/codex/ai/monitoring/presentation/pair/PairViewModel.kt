@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.presentation.pair
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.claude.codex.ai.monitoring.R
+import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.domain.models.PairingError
 import com.claude.codex.ai.monitoring.domain.models.PairingOfferModel
 import com.claude.codex.ai.monitoring.domain.repo.PairingRepository
@@ -82,10 +83,21 @@ class PairViewModel(
                             // Only the name needs fixing; keep the scanned code.
                             state.copy(step = backToForm, nameError = R.string.pair_error_name)
                         } else {
-                            state.copy(step = PairStep.Failed(error.toMessage()))
+                            state.copy(step = PairStep.Failed(failureText(error, current)))
                         }
                     }
                 }
+        }
+    }
+
+    /** Unreachable remote address almost always means the tunnel is not running; say so. */
+    private fun failureText(error: Throwable, offer: PairingOfferModel): UiText {
+        val host = offer.baseUrl.substringAfter("://")
+        val remote = !host.startsWith("127.0.0.1") && !host.startsWith("localhost")
+        return if (error is PairingError.Network && remote) {
+            UiText.Res(R.string.pair_error_network_remote, listOf(host))
+        } else {
+            UiText.Res(error.toMessage())
         }
     }
 

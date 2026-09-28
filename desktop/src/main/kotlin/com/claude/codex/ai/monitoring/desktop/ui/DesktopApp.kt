@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import com.claude.codex.ai.monitoring.desktop.DesktopController
-import com.claude.codex.ai.monitoring.desktop.PairingRoute
 import com.claude.codex.ai.monitoring.desktop.ui.components.PrimaryButton
 import com.claude.codex.ai.monitoring.desktop.ui.components.StatusDot
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ActivityScreen
@@ -54,7 +53,8 @@ fun DesktopApp(controller: DesktopController) {
     val colors = DesktopTheme.colors
 
     var tab by remember { mutableStateOf(Tab.OVERVIEW) }
-    var route by remember { mutableStateOf(PairingRoute.TUNNEL) }
+    val route by controller.route.collectAsState()
+    val tunnelReachable by controller.tunnelReachable.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -97,7 +97,7 @@ fun DesktopApp(controller: DesktopController) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            PrimaryButton("Pair device", onClick = { controller.startPairing(route) }, modifier = Modifier.fillMaxWidth())
+            PrimaryButton("Pair device", onClick = { controller.startPairing() }, modifier = Modifier.fillMaxWidth())
         }
         when (tab) {
             Tab.OVERVIEW -> OverviewScreen(
@@ -112,7 +112,7 @@ fun DesktopApp(controller: DesktopController) {
                 nowMs = now,
                 onGrantChange = controller::updateGrant,
                 onRevoke = controller::revoke,
-                onPair = { controller.startPairing(route) },
+                onPair = { controller.startPairing() },
             )
             Tab.ACTIVITY -> ActivityScreen(entries = audit, deviceNames = devices.associate { it.deviceId to it.name })
         }
@@ -122,17 +122,16 @@ fun DesktopApp(controller: DesktopController) {
         DialogWindow(
             onCloseRequest = controller::cancelPairing,
             title = "Pair a phone",
-            state = rememberDialogState(width = 520.dp, height = 780.dp),
+            state = rememberDialogState(width = 520.dp, height = 820.dp),
         ) {
             DesktopTheme {
                 PairDialogContent(
                     offer = current,
                     route = route,
+                    tunnelHost = controller.publicUrl.substringAfter("://"),
+                    tunnelReachable = tunnelReachable,
                     desktopFingerprint = controller.identity.fingerprint,
-                    onRouteChange = {
-                        route = it
-                        controller.startPairing(it)
-                    },
+                    onRouteChange = { controller.startPairing(it) },
                     onRegenerate = { controller.startPairing(route) },
                     onClose = controller::cancelPairing,
                 )

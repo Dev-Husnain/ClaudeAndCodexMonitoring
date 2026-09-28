@@ -86,6 +86,7 @@
     <string name="pair_error_rate_limited">Too many attempts. Wait a few minutes and try again.</string>
     <string name="pair_error_mismatch">The computer\'s key did not match the QR code. Pairing was stopped to protect you.</string>
     <string name="pair_error_network">Could not reach your computer. Check that AgentMon is running and, over USB, that adb reverse is set.</string>
+    <string name="pair_error_network_remote">Could not reach %1$s. The Cloudflare tunnel is probably not running yet. For now, on your computer choose \"USB · adb reverse\" in the pair dialog and scan the new code.</string>
     <string name="pair_error_retry">Scan again</string>
     <string name="cd_scanner">Camera viewfinder for the pairing QR code</string>
 

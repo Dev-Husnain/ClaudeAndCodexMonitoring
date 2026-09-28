@@ -1,6 +1,7 @@
 package com.claude.codex.ai.monitoring.data.repo
 
 import android.os.Build
+import android.util.Log
 import com.claude.codex.ai.monitoring.core.utils.AppDispatchers
 import com.claude.codex.ai.monitoring.core.utils.Clock
 import com.claude.codex.ai.monitoring.data.local.PairingDataSource
@@ -44,6 +45,8 @@ class PairingRepositoryImpl(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // No secrets in the message: it names the address and the failure only.
+                Log.w(LOG_TAG, "Pairing request to ${offer.baseUrl} failed: ${e::class.simpleName}: ${e.message}")
                 return@withContext Result.failure(PairingError.Network(e))
             }
             when (response.status) {
@@ -88,4 +91,8 @@ class PairingRepositoryImpl(
     override fun defaultDeviceName(): String =
         systemDeviceName()?.takeIf { it.isNotBlank() }
             ?: "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL}".trim()
+
+    private companion object {
+        const val LOG_TAG = "AgentMon"
+    }
 }

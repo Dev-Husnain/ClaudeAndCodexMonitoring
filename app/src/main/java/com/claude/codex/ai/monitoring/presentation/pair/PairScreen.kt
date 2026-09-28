@@ -25,6 +25,7 @@ import com.claude.codex.ai.monitoring.core.ui.AppTopBar
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
+import com.claude.codex.ai.monitoring.core.utils.resolve
 import com.claude.codex.ai.monitoring.presentation.pair.components.CodeEntryPanel
 import com.claude.codex.ai.monitoring.presentation.pair.components.PairConfirmPanel
 import com.claude.codex.ai.monitoring.presentation.pair.components.PairSuccessPanel
@@ -92,7 +93,7 @@ fun PairScreen(
                     is PairStep.Failed -> StateMessage(
                         icon = R.drawable.ic_alert,
                         title = stringResource(R.string.pair_error_title),
-                        message = stringResource(step.message),
+                        message = step.message.resolve(),
                         tone = StatusTone.ERROR,
                         actionLabel = stringResource(R.string.pair_error_retry),
                         actionIcon = R.drawable.ic_scan,

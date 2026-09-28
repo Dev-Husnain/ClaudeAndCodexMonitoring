@@ -85,7 +85,7 @@ fun main(args: Array<String>) {
                 Item("Open AgentMon", onClick = { windowVisible = true })
                 Item("Pair device", onClick = {
                     windowVisible = true
-                    controller.startPairing(PairingRoute.TUNNEL)
+                    controller.startPairing()
                 })
                 Separator()
                 Item("Quit", onClick = {

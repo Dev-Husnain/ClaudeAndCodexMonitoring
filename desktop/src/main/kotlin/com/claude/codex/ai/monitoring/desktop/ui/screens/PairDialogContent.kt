@@ -1,6 +1,8 @@
 package com.claude.codex.ai.monitoring.desktop.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +41,8 @@ import java.awt.datatransfer.StringSelection
 fun PairDialogContent(
     offer: PairingOffer,
     route: PairingRoute,
+    tunnelHost: String,
+    tunnelReachable: Boolean?,
     desktopFingerprint: String,
     onRouteChange: (PairingRoute) -> Unit,
     onRegenerate: () -> Unit,
@@ -56,9 +60,9 @@ fun PairDialogContent(
     val expired = remaining <= 0
 
     Column(
-        modifier = Modifier.fillMaxSize().background(colors.background).padding(28.dp),
+        modifier = Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text("Pair a phone", style = MaterialTheme.typography.headlineMedium.copy(brush = colors.brandGradient))
         Text(
@@ -68,16 +72,29 @@ fun PairDialogContent(
             textAlign = TextAlign.Center,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ToggleChip("Anywhere · ${offer.baseUrl.takeIf { route == PairingRoute.TUNNEL } ?: "tunnel"}", route == PairingRoute.TUNNEL, { onRouteChange(PairingRoute.TUNNEL) })
+            ToggleChip("Anywhere · $tunnelHost", route == PairingRoute.TUNNEL, { onRouteChange(PairingRoute.TUNNEL) })
             ToggleChip("USB · adb reverse", route == PairingRoute.USB, { onRouteChange(PairingRoute.USB) })
         }
+        val routeNote = when {
+            route == PairingRoute.USB && tunnelReachable == false ->
+                "$tunnelHost is not reachable yet, so this code uses USB. Connect the phone and run: adb reverse tcp:8787 tcp:8787"
+            route == PairingRoute.USB -> "Phone must be connected by USB with: adb reverse tcp:8787 tcp:8787"
+            tunnelReachable == false -> "Warning: $tunnelHost is not reachable right now. Pairing will fail until the tunnel runs."
+            else -> "Works from anywhere through the Cloudflare tunnel."
+        }
+        Text(
+            routeNote,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (route == PairingRoute.TUNNEL && tunnelReachable == false) colors.error else colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
         if (expired) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(40.dp)) {
                 Text("This code expired", style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
                 PrimaryButton("New code", onClick = onRegenerate)
             }
         } else {
-            QrCode(text = offer.code)
+            QrCode(text = offer.code, size = 220.dp)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 CountdownRing(remainingMs = remaining, totalMs = offer.expiresAtMs - offer.createdAtMs)
                 Column {
@@ -95,7 +112,6 @@ fun PairDialogContent(
                     offer.code,
                     style = MaterialTheme.typography.bodyLarge,
                     color = colors.textPrimary,
-                    maxLines = 3,
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(colors.surfaceElevated, RoundedCornerShape(12.dp))
