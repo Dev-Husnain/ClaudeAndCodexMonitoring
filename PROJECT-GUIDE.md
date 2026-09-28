@@ -70,6 +70,10 @@ All versions are pinned to releases built against Kotlin ≤ 2.2, so the project
 | Compose Multiplatform | 1.9.3 | desktop UI (**new**) |
 | kotlinx-coroutines-test, kotlin-test-junit | 1.10.2 / 2.2.10 | tests |
 | Fonts: Space Grotesk, Inter, JetBrains Mono | fontsource latin TTF | spec §9.1, SIL OFL |
+| CameraX (camera2, lifecycle, compose, mlkit-vision) | 1.6.2 | QR scanning on the Pair screen (**new, M3**) |
+| ML Kit barcode-scanning (bundled model) | 17.3.0 | QR decoding without Play Services (**new, M3**) |
+| SQLDelight (sqlite-driver) | 2.1.0 | desktop device store and audit log, spec §5 (**new, M3**) |
+| ZXing core | 3.5.4 | desktop QR generation, spec §5 (**new, M3**) |
 
 ## 5. Feature Progress
 ### Feature: Foundation (M0)
@@ -91,29 +95,49 @@ All versions are pinned to releases built against Kotlin ≤ 2.2, so the project
 - [x] **Gate:** verified on Pixel_9a emulator (API 36) and Xiaomi M2101K7AG (API 31) via `adb reverse` over wireless adb
 Notes: sessions are demo data until phase 4.
 
+### Feature: Pairing + mutual auth (M3, spec phase 3)
+- [x] Shared: P-256 helpers, purpose-bound signed payloads, pairing code format (12 tests with codec)
+- [x] Desktop: persistent key; SQLDelight devices and audit log; one-time 2-minute tokens; approval dialog
+  (projects + read-only/input); challenge/auth with single-use nonces; rate limits; allow-list routing;
+  read-only enforcement; instant revoke; Devices and Activity screens (21 tests incl. isolation, replay,
+  revocation, expiry, rate limiting)
+- [x] Phone: Keystore key (StrongBox first), pinned desktop key with fingerprint check, handshake, stops
+  retrying when refused
+- [x] Onboarding, Pair (CameraX + ML Kit scanner, paste-code fallback, confirm/waiting/success/error),
+  Devices & security (unpair), Home "pair again" states, read-only pill
+- [x] Removed the dev-only server-address setting; the QR carries the address now
+- [x] Unit tests: parse code, pair flow VM, refusal handling, home unauthorized/read-only (34 app tests)
+- [ ] **Gate (owner):** pair the Xiaomi by scanning the QR over USB; approve; revoke from Devices and
+  confirm the phone shows "This phone was removed"
+Notes: `PairingRepositoryImpl` (key pinning check) has no unit test: it needs the Android Keystore and
+DataStore. It is covered by the manual gate above.
+
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
 |---|---|---|---|---|
 | Home | portrait + resizable | spec §9.3 #2 | `presentation/home/HomeScreen.kt` | Done |
 | Session detail (activity) | portrait + resizable | spec §9.3 #3 | `presentation/sessiondetail/SessionDetailScreen.kt` | Done (composer/terminal in M5) |
 | Settings | portrait + resizable | spec §9.3 #6 | `presentation/settings/SettingsScreen.kt` | Done (notifications in M7) |
-| Onboarding + Pair | portrait | spec §9.3 #1 | – | M3 |
-| Devices & Security | portrait | spec §9.3 #5 | – | M3 |
+| Onboarding | portrait + resizable | spec §9.3 #1 | `presentation/onboarding/OnboardingScreen.kt` | Done |
+| Pair (scan / code / confirm / wait / success) | portrait + resizable | spec §9.3 #1 | `presentation/pair/PairScreen.kt` | Done |
+| Devices & Security | portrait + resizable | spec §9.3 #5 | `presentation/devicessecurity/DevicesSecurityScreen.kt` | Done |
+| Desktop Pair / Approve / Devices / Activity | window | spec §9.4 | `desktop/.../ui/screens/` | Done |
 | Desktop Overview | window | spec §9.4 | `desktop/.../ui/screens/OverviewScreen.kt` | Done |
 
 ## 7. Data Model & API
 See `docs/protocol.md`. Domain models: `AgentSnapshotModel` (connection, computer, projects,
 sessions, timelines), `SessionModel`, `TimelineEventModel`, `ConnectionStatus` (Connecting /
-Connected / Reconnecting / Offline), and `AppSettingsModel` (theme, server URL, haptics, device id in DataStore).
+Connected / Reconnecting / Offline / Unauthorized(AuthProblem)), `PairingModel` (pinned computer, in its own
+DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics).
 
 ## 8. Milestone Progress
 | Milestone | Status |
 |---|---|
 | M0 Foundation | Done |
 | M1 Local link (phase 1) | Done, gate verified on a real phone |
-| M2 Tunnel (phase 2) | **Waiting on owner**: docs/setup.md part C |
-| M3 Pairing + mutual auth | Not started; independent of M2, next |
-| M4 Hooks + state machine | Not started (blocked on M3; real data needs auth) |
+| M2 Tunnel (phase 2) | Nameservers on Cloudflare (verified); cloudflared setup next, with the owner |
+| M3 Pairing + mutual auth | Done; real-phone pairing gate needs the owner |
+| M4 Hooks + state machine | Not started; next after the M3 gate |
 | M5 Wrapper + control | Not started |
 | M6 Headless resume | Not started |
 | M7 Notifications (foreground service) | Not started |
@@ -128,17 +152,22 @@ Connected / Reconnecting / Offline), and `AppSettingsModel` (theme, server URL, 
 - **D5** Added `session.history.result` to the protocol (the spec has the request but no reply).
 - **D6** `ws://` is accepted only for 127.0.0.1/localhost; any other host must be `wss://`.
 - **D7** Pairing data must never be backed up: `allowBackup=false` and extraction rules exclude everything.
-- **D8** Before phase 3 the device id is a random UUID in DataStore; phase 3 replaces it with a Keystore key.
+- **D8** The device id is the first 32 hex characters of the SHA-256 of the phone's public key, so an id cannot be
+  claimed without the matching private key.
+- **D11** Pairing grants are least-privilege by default: read-only; "All projects" is on by default in the approve dialog.
+- **D12** `/pair` holds the HTTP request for up to 90 s (under Cloudflare's 100 s origin timeout) instead of polling.
+- **D13** The pairing QR also works as a pasteable code (`AGENTMON1:`…), for emulators and phones without a camera.
+- **D14** Refusals (revoked, not paired, auth failed, desktop key mismatch) stop reconnecting and clear the cached
+  sessions, since nothing from that computer can be trusted until the phone is paired again.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
 
 ## 10. Known Gaps / TODO
-- No authentication until M3: don't run the tunnel with real sessions before then (docs/threat-model.md).
 - Sessions are **demo data** (`DemoSessionSimulator`) until M4; run `--no-demo` once hooks exist.
 - After a disconnect, the session status shown is the last known one; STALE detection comes in M4.
 - The composer, quick actions and terminal tab arrive in M5; they are not shown yet rather than stubbed.
-- The desktop sidebar has only Overview; Devices, Pair and Activity arrive in M3/M4.
+- The desktop pairing route defaults to the tunnel; choose "USB · adb reverse" until M2 is set up.
 - Not yet checked: API 24 device, tablet window, TalkBack pass (M8 QA).
 
 ## 11. How to Build & Run

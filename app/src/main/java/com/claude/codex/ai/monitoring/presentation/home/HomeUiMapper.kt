@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.presentation.home
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.core.utils.toRelativeTime
+import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.SessionControl
 import com.claude.codex.ai.monitoring.domain.models.SessionModel
@@ -11,15 +12,40 @@ import com.claude.codex.ai.monitoring.presentation.common.toLabel
 import com.claude.codex.ai.monitoring.presentation.common.toTone
 import com.claude.codex.ai.monitoring.presentation.common.toUiModel
 
-fun SessionOverviewModel.toHomeUiState(nowMs: Long): HomeUiState {
+/** [pairedComputerName] comes from the pairing, so it is known even before the first `ready`. */
+fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?): HomeUiState {
     val offline = connection is ConnectionStatus.Offline
+    val computerName = computer?.name ?: pairedComputerName
+    val computerText = computerName?.let { UiText.Raw(it) } ?: UiText.Res(R.string.home_your_computer)
+    val unauthorized = (connection as? ConnectionStatus.Unauthorized)?.reason?.let { reason ->
+        UnauthorizedUiModel(
+            title = when (reason) {
+                AuthProblem.REVOKED -> R.string.home_unauthorized_revoked_title
+                AuthProblem.NOT_PAIRED -> R.string.home_unauthorized_not_paired_title
+                AuthProblem.AUTH_FAILED -> R.string.home_unauthorized_auth_title
+                AuthProblem.DESKTOP_MISMATCH -> R.string.home_unauthorized_mismatch_title
+            },
+            message = UiText.Res(
+                when (reason) {
+                    AuthProblem.REVOKED -> R.string.home_unauthorized_revoked_message
+                    AuthProblem.NOT_PAIRED -> R.string.home_unauthorized_not_paired_message
+                    AuthProblem.AUTH_FAILED -> R.string.home_unauthorized_auth_message
+                    AuthProblem.DESKTOP_MISMATCH -> R.string.home_unauthorized_mismatch_message
+                },
+                listOf(computerText),
+            ),
+        )
+    }
     val sessionCount = needsYou.size + projects.sumOf { it.sessions.size }
     return HomeUiState(
         connection = connection.toUiModel(),
-        computerName = computer?.name,
-        isLoading = !hasSnapshot && !offline,
+        computerName = computerName,
+        readOnly = hasSnapshot && !canSendInput && unauthorized == null,
+        isLoading = !hasSnapshot && !offline && unauthorized == null,
         isOffline = !hasSnapshot && offline,
-        isEmpty = hasSnapshot && sessionCount == 0,
+        offlineMessage = UiText.Res(R.string.home_offline_message, listOf(computerText)),
+        unauthorized = unauthorized,
+        isEmpty = hasSnapshot && sessionCount == 0 && unauthorized == null,
         staleNotice = lastConnectedAtMs
             ?.takeIf { hasSnapshot && offline }
             ?.let { UiText.Res(R.string.home_offline_last_seen, listOf(it.toRelativeTime(nowMs))) },

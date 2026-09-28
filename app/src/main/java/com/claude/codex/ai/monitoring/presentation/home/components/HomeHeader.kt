@@ -30,6 +30,7 @@ fun HomeHeader(
     connection: ConnectionUiModel,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -51,6 +52,9 @@ fun HomeHeader(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
             ) {
                 StatusPill(tone = connection.tone, label = connection.label.resolve())
+                if (readOnly) {
+                    StatusPill(tone = StatusTone.STALE, label = stringResource(R.string.home_read_only), animateOrb = false)
+                }
                 Text(
                     text = computerName?.let { stringResource(R.string.home_subtitle_computer, it) }
                         ?: stringResource(R.string.home_subtitle_waiting),

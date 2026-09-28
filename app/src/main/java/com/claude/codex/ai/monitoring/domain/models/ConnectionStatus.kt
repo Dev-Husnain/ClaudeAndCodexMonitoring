@@ -11,4 +11,7 @@ sealed interface ConnectionStatus {
 
     /** Several attempts failed in a row: the computer is probably asleep or the agent is stopped. */
     data class Offline(val lastConnectedAtMs: Long?) : ConnectionStatus
+
+    /** The computer refused this phone, or could not prove its identity. No retries until re-paired. */
+    data class Unauthorized(val reason: AuthProblem) : ConnectionStatus
 }

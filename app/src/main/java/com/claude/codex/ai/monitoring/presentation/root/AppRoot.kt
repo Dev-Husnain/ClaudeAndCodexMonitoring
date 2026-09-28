@@ -9,12 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claude.codex.ai.monitoring.core.navigation.AppNavHost
 import com.claude.codex.ai.monitoring.core.theme.AppTheme
+import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.domain.models.ThemeMode
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Applies the user's theme choice and hosts the navigation graph. No padding, background or
- * insets here: every screen owns its own (guidelines 5.8).
+ * Applies the user's theme choice and hosts the navigation graph once the pairing state is known.
+ * No padding or insets here: every screen owns its own (guidelines 5.8).
  */
 @Composable
 fun AppRoot(
@@ -29,7 +30,13 @@ fun AppRoot(
     }
     AppTheme(darkTheme = darkTheme) {
         Box(modifier = modifier.fillMaxSize()) {
-            AppNavHost()
+            if (state.pairState == PairState.LOADING) {
+                // A few milliseconds while DataStore loads: the themed background, no flash of the wrong screen.
+                AuroraBackground(modifier = Modifier.fillMaxSize()) { }
+            } else {
+                // One call site, so the back stack survives pairing changes; AppNavHost reacts to them itself.
+                AppNavHost(isPaired = state.pairState == PairState.PAIRED)
+            }
         }
     }
 }

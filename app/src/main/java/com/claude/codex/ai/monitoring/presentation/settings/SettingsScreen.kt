@@ -3,7 +3,6 @@ package com.claude.codex.ai.monitoring.presentation.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -19,8 +18,8 @@ import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.Dimens
 import com.claude.codex.ai.monitoring.core.ui.AppTopBar
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
-import com.claude.codex.ai.monitoring.presentation.settings.components.ServerUrlField
-import com.claude.codex.ai.monitoring.presentation.settings.components.SettingsInfoRow
+import com.claude.codex.ai.monitoring.core.ui.InfoRow
+import com.claude.codex.ai.monitoring.presentation.settings.components.SettingsNavRow
 import com.claude.codex.ai.monitoring.presentation.settings.components.SettingsSection
 import com.claude.codex.ai.monitoring.presentation.settings.components.SettingsSwitchRow
 import com.claude.codex.ai.monitoring.presentation.settings.components.ThemeModeSelector
@@ -29,6 +28,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onDevicesClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
@@ -40,7 +40,6 @@ fun SettingsScreen(
                 .align(Alignment.TopCenter)
                 .fillMaxSize()
                 .systemBarsPadding()
-                .imePadding()
                 .widthIn(max = Dimens.ContentMaxWidth),
         ) {
             AppTopBar(title = stringResource(R.string.settings_title), onBack = onBack)
@@ -56,13 +55,12 @@ fun SettingsScreen(
                         onSelect = { viewModel.onEvent(SettingsEvent.OnThemeModeSelect(it)) },
                     )
                 }
-                SettingsSection(title = stringResource(R.string.settings_section_connection)) {
-                    ServerUrlField(
-                        value = state.serverUrlInput,
-                        error = state.serverUrlError,
-                        saved = state.serverUrlSaved,
-                        onValueChange = { viewModel.onEvent(SettingsEvent.OnServerUrlChange(it)) },
-                        onSave = { viewModel.onEvent(SettingsEvent.OnServerUrlSave) },
+                SettingsSection(title = stringResource(R.string.settings_section_security)) {
+                    SettingsNavRow(
+                        icon = R.drawable.ic_shield,
+                        title = stringResource(R.string.devices_title),
+                        summary = stringResource(R.string.settings_devices_summary),
+                        onClick = onDevicesClick,
                     )
                 }
                 SettingsSection(title = stringResource(R.string.settings_section_feedback)) {
@@ -74,10 +72,7 @@ fun SettingsScreen(
                     )
                 }
                 SettingsSection(title = stringResource(R.string.settings_section_about)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd)) {
-                        SettingsInfoRow(label = stringResource(R.string.settings_version), value = state.appVersion)
-                        SettingsInfoRow(label = stringResource(R.string.settings_device_id), value = state.deviceId)
-                    }
+                    InfoRow(label = stringResource(R.string.settings_version), value = state.appVersion)
                 }
             }
         }

@@ -29,8 +29,6 @@ class SettingsDataSource(context: Context) {
 
     object Keys {
         val ThemeMode = stringPreferencesKey("theme_mode")
-        val ServerUrl = stringPreferencesKey("server_url")
         val HapticsEnabled = booleanPreferencesKey("haptics_enabled")
-        val DeviceId = stringPreferencesKey("device_id")
     }
 }

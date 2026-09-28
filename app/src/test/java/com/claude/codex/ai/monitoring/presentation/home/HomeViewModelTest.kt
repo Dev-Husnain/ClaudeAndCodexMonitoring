@@ -7,6 +7,8 @@ import com.claude.codex.ai.monitoring.domain.models.ProjectModel
 import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionOverviewUseCase
 import com.claude.codex.ai.monitoring.fakes.FakeAgentRepository
+import com.claude.codex.ai.monitoring.fakes.FakePairingRepository
+import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.fakes.sessionModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,6 +32,7 @@ class HomeViewModelTest {
 
     private val main = StandardTestDispatcher()
     private val repository = FakeAgentRepository()
+    private val pairing = FakePairingRepository(FakePairingRepository.pairing(computerName = "Laptop"))
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(main)
@@ -39,7 +42,7 @@ class HomeViewModelTest {
 
     private fun runCurrent() = main.scheduler.runCurrent()
 
-    private fun viewModel() = HomeViewModel(ObserveSessionOverviewUseCase(repository), repository, Clock { 1_000_000L })
+    private fun viewModel() = HomeViewModel(ObserveSessionOverviewUseCase(repository), repository, pairing, Clock { 1_000_000L })
 
     @Test
     fun `shows loading until the first snapshot`() {
@@ -103,5 +106,29 @@ class HomeViewModelTest {
         val vm = viewModel()
         vm.onEvent(HomeEvent.OnRetryClick)
         assertEquals(1, repository.reconnectCalls)
+    }
+
+    @Test
+    fun `revoked phone gets a pair again state instead of data`() {
+        repository.snapshot.value = AgentSnapshotModel(connection = ConnectionStatus.Unauthorized(AuthProblem.REVOKED), hasSnapshot = true)
+        val vm = viewModel()
+        runCurrent()
+        with(vm.homeUiState.value) {
+            assertEquals(com.claude.codex.ai.monitoring.R.string.home_unauthorized_revoked_title, unauthorized?.title)
+            assertFalse(isLoading)
+            assertFalse(isEmpty)
+        }
+        vm.onEvent(HomeEvent.OnPairAgainClick)
+        runCurrent()
+        assertEquals(1, pairing.unpairCalls)
+    }
+
+    @Test
+    fun `read-only grant is surfaced`() {
+        repository.snapshot.value = AgentSnapshotModel(connection = ConnectionStatus.Connected(1), hasSnapshot = true, canSendInput = false)
+        val vm = viewModel()
+        runCurrent()
+        assertTrue(vm.homeUiState.value.readOnly)
+        assertEquals("Laptop", vm.homeUiState.value.computerName)
     }
 }

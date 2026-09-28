@@ -4,6 +4,9 @@
 
     <!-- WebSocket connection to the owner's desktop agent (via adb reverse or the Cloudflare tunnel). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only to scan the pairing QR code; pasting the code works without it. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
         android:name=".App"

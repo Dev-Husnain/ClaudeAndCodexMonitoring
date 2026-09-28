@@ -9,4 +9,5 @@ data class SessionOverviewModel(
     val projectNames: Map<String, String>,
     val hasSnapshot: Boolean,
     val lastConnectedAtMs: Long?,
+    val canSendInput: Boolean,
 )

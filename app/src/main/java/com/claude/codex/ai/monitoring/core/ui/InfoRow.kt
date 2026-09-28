@@ -1,4 +1,4 @@
-package com.claude.codex.ai.monitoring.presentation.settings.components
+package com.claude.codex.ai.monitoring.core.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -17,7 +17,7 @@ import com.claude.codex.ai.monitoring.core.theme.MonoTextStyle
 
 /** Read-only label/value pair; values are monospace because they are versions and ids. */
 @Composable
-fun SettingsInfoRow(
+fun InfoRow(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
@@ -42,8 +42,8 @@ fun SettingsInfoRow(
 
 @Preview
 @Composable
-private fun SettingsInfoRowPreview() {
+private fun InfoRowPreview() {
     AppTheme(darkTheme = true) {
-        SettingsInfoRow(label = "Version", value = "1.0")
+        InfoRow(label = "Version", value = "1.0")
     }
 }

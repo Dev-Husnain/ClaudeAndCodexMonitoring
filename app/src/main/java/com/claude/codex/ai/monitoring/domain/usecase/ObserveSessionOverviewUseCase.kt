@@ -43,6 +43,7 @@ class ObserveSessionOverviewUseCase(
             projectNames = projects.associate { it.projectId to it.name },
             hasSnapshot = hasSnapshot,
             lastConnectedAtMs = lastConnectedAtMs,
+            canSendInput = canSendInput,
         )
     }
 }

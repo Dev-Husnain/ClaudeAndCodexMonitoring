@@ -5,7 +5,8 @@
     <string name="action_back">Back</string>
     <string name="action_retry">Try again</string>
     <string name="action_settings">Settings</string>
-    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_pair_again">Pair again</string>
 
     <!-- Session status -->
     <string name="status_running">Running</string>
@@ -20,6 +21,7 @@
     <string name="connection_connected">Connected</string>
     <string name="connection_reconnecting">Reconnecting…</string>
     <string name="connection_offline">Offline</string>
+    <string name="connection_unauthorized">Not authorized</string>
 
     <!-- Relative time -->
     <string name="time_just_now">just now</string>
@@ -36,6 +38,57 @@
         <item quantity="other">%d days ago</item>
     </plurals>
 
+    <!-- Onboarding -->
+    <string name="onboarding_title">Your coding agents, in your pocket</string>
+    <string name="onboarding_subtitle">Keep an eye on Claude Code while you are away from your desk.</string>
+    <string name="onboarding_feature_live_title">Live status</string>
+    <string name="onboarding_feature_live_body">See every session: running, waiting for you, stuck or done.</string>
+    <string name="onboarding_feature_attention_title">Know when it needs you</string>
+    <string name="onboarding_feature_attention_body">Permission prompts and questions are pinned at the top.</string>
+    <string name="onboarding_feature_private_title">Private to your phone</string>
+    <string name="onboarding_feature_private_body">Only phones you approve on your computer can connect, and only to the projects you choose.</string>
+    <string name="onboarding_monitor_only_note">Sessions started with plain \"claude\" can be watched. To send input from the phone, start them with \"agentmon claude\".</string>
+    <string name="onboarding_cta">Pair with your computer</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Pair with your computer</string>
+    <string name="pair_scan_hint">On your computer, open AgentMon and click Pair device. Then point the camera at the QR code.</string>
+    <string name="pair_enter_code">Enter code instead</string>
+    <string name="pair_scan_instead">Scan QR code instead</string>
+    <string name="pair_code_label">Pairing code</string>
+    <string name="pair_code_hint">Paste the code shown under the QR code (starts with AGENTMON1:).</string>
+    <string name="pair_code_continue">Continue</string>
+    <string name="pair_camera_title">Camera access needed</string>
+    <string name="pair_camera_message">AgentMon uses the camera only to scan the pairing QR code. You can also paste the code instead.</string>
+    <string name="pair_camera_allow">Allow camera</string>
+    <string name="pair_camera_settings">Open settings</string>
+    <string name="pair_confirm_title">Pair with %1$s?</string>
+    <string name="pair_confirm_address">Address</string>
+    <string name="pair_confirm_desktop_key">Computer key</string>
+    <string name="pair_confirm_desktop_key_hint">Must match the key shown in the pair dialog on your computer.</string>
+    <string name="pair_confirm_phone_key">This phone</string>
+    <string name="pair_confirm_phone_key_hint">Your computer will show this key when it asks you to approve.</string>
+    <string name="pair_device_name">Name shown on your computer</string>
+    <string name="pair_send">Send pairing request</string>
+    <string name="pair_waiting_title">Approve on %1$s</string>
+    <string name="pair_waiting_message">Your computer is asking whether to allow this phone. Choose what it may see, then click Approve.</string>
+    <string name="pair_success_title">Paired with %1$s</string>
+    <string name="pair_success_read_only">This phone can watch sessions (read-only). You can change that on your computer under Devices.</string>
+    <string name="pair_success_input">This phone can watch sessions and send input.</string>
+    <string name="pair_success_cta">Open AgentMon</string>
+    <string name="pair_error_title">Pairing did not complete</string>
+    <string name="pair_error_invalid_code">That is not an AgentMon pairing code.</string>
+    <string name="pair_error_insecure">This code uses an unencrypted address. Pair over the tunnel (https) or USB (127.0.0.1).</string>
+    <string name="pair_error_name">Enter a name of up to 40 characters.</string>
+    <string name="pair_error_rejected">The request was rejected on your computer.</string>
+    <string name="pair_error_expired">This code expired or was already used. Click New code on your computer and scan again.</string>
+    <string name="pair_error_timeout">Nobody approved the request in time. Scan a new code and approve it on your computer.</string>
+    <string name="pair_error_rate_limited">Too many attempts. Wait a few minutes and try again.</string>
+    <string name="pair_error_mismatch">The computer\'s key did not match the QR code. Pairing was stopped to protect you.</string>
+    <string name="pair_error_network">Could not reach your computer. Check that AgentMon is running and, over USB, that adb reverse is set.</string>
+    <string name="pair_error_retry">Scan again</string>
+    <string name="cd_scanner">Camera viewfinder for the pairing QR code</string>
+
     <!-- Home -->
     <string name="home_title">AgentMon</string>
     <string name="home_subtitle_computer">on %1$s</string>
@@ -44,11 +97,21 @@
     <string name="home_empty_title">No sessions yet</string>
     <string name="home_empty_message">Start Claude Code in a monitored project and it will show up here live.</string>
     <string name="home_offline_title">Computer unreachable</string>
-    <string name="home_offline_message">AgentMon can\'t reach your computer. Check that the desktop agent is running and the connection address in Settings is right.</string>
+    <string name="home_offline_message">AgentMon can\'t reach %1$s. Check that the desktop agent is running and the computer is awake.</string>
     <string name="home_offline_last_seen">Showing the last known state from %1$s.</string>
     <string name="home_last_tool">Last tool: %1$s</string>
     <string name="home_monitor_only">Monitor only</string>
+    <string name="home_read_only">Read-only</string>
+    <string name="home_your_computer">your computer</string>
     <string name="cd_session_card">%1$s, %2$s</string>
+    <string name="home_unauthorized_revoked_title">This phone was removed</string>
+    <string name="home_unauthorized_revoked_message">Access was revoked on %1$s. Pair again to reconnect.</string>
+    <string name="home_unauthorized_not_paired_title">Your computer forgot this phone</string>
+    <string name="home_unauthorized_not_paired_message">%1$s no longer recognises this phone, for example after a reinstall. Pair again to reconnect.</string>
+    <string name="home_unauthorized_auth_title">Sign-in was refused</string>
+    <string name="home_unauthorized_auth_message">%1$s did not accept this phone\'s key. Pair again to reconnect.</string>
+    <string name="home_unauthorized_mismatch_title">Computer identity changed</string>
+    <string name="home_unauthorized_mismatch_message">Whoever answered could not prove it is %1$s, so AgentMon stopped connecting. If you reinstalled AgentMon on the computer, pair again.</string>
 
     <!-- Session detail -->
     <string name="detail_section_activity">Activity</string>
@@ -64,22 +127,39 @@
     <string name="detail_not_found_message">This session is no longer known to your computer.</string>
     <string name="detail_offline_banner">Offline. Showing the last known state.</string>
 
+    <!-- Devices & security -->
+    <string name="devices_title">Devices &amp; security</string>
+    <string name="devices_section_computer">Paired computer</string>
+    <string name="devices_section_phone">This phone</string>
+    <string name="devices_section_revoke">Removing access</string>
+    <string name="devices_computer_name">Computer</string>
+    <string name="devices_address">Address</string>
+    <string name="devices_desktop_key">Computer key (pinned)</string>
+    <string name="devices_access">Access</string>
+    <string name="devices_access_read_only">Read-only</string>
+    <string name="devices_access_input">Can send input</string>
+    <string name="devices_paired_on">Paired</string>
+    <string name="devices_phone_name">Name</string>
+    <string name="devices_phone_key">Phone key</string>
+    <string name="devices_key_storage">Key storage</string>
+    <string name="devices_key_storage_value">Android Keystore, non-exportable</string>
+    <string name="devices_revoke_help">To remove a phone, open AgentMon on your computer, go to Devices and click Revoke access. The phone is disconnected immediately. Unpairing here only makes this phone forget the computer.</string>
+    <string name="devices_unpair">Unpair this phone</string>
+    <string name="devices_unpair_confirm_title">Unpair this phone?</string>
+    <string name="devices_unpair_confirm_message">This phone forgets %1$s and deletes its key. Also revoke it on the computer so the old key cannot be used.</string>
+    <string name="devices_unpair_confirm">Unpair</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_light">Light</string>
-    <string name="settings_section_connection">Connection</string>
-    <string name="settings_server_url">Desktop agent address</string>
-    <string name="settings_server_url_hint">Use ws://127.0.0.1:8787/ws with adb reverse, or wss://agent.appsdev.qzz.io/ws through the tunnel.</string>
-    <string name="settings_server_url_invalid">Enter a ws:// or wss:// address ending in /ws.</string>
-    <string name="settings_server_url_insecure">Unencrypted ws:// is only allowed for 127.0.0.1 or localhost. Use wss:// for remote addresses.</string>
-    <string name="settings_server_url_saved">Address saved. Reconnecting…</string>
+    <string name="settings_section_security">Security</string>
+    <string name="settings_devices_summary">Paired computer, keys and how to revoke</string>
     <string name="settings_section_feedback">Feedback</string>
     <string name="settings_haptics">Haptics</string>
     <string name="settings_haptics_summary">Vibrate on send, approve and deny</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version">Version</string>
-    <string name="settings_device_id">Device ID</string>
 </resources>

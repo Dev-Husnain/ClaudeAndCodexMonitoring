@@ -9,7 +9,5 @@ interface SettingsRepository {
 
     suspend fun setThemeMode(mode: ThemeMode)
 
-    suspend fun setServerUrl(url: String)
-
     suspend fun setHapticsEnabled(enabled: Boolean)
 }

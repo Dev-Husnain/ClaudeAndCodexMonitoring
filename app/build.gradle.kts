@@ -57,6 +57,11 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.androidx.camera.mlkit.vision)
+    implementation(libs.mlkit.barcode.scanning)
 
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)

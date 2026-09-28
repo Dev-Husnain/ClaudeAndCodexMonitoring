@@ -31,16 +31,25 @@ Each part says when it is needed. Parts A and B are enough to run the current bu
    adb reverse tcp:8787 tcp:8787
    ```
 4. Install and open the app: `gradlew.bat :app:installDebug`, or press Run in Android Studio.
-   The default address `ws://127.0.0.1:8787/ws` works as is. Within a few seconds the pill should show
-   **Connected** with demo sessions.
+5. **Pair** (one time per phone):
+   - In the desktop window, click **Pair device**, then choose **USB · adb reverse** (use **Anywhere · tunnel**
+     once part C is done).
+   - On the phone, tap **Pair with your computer**, allow the camera, and scan the QR code. Without a camera,
+     tap **Enter code instead** and paste the code shown under the QR.
+   - Check that the **Computer key** on the phone matches the **Desktop key** in the dialog, name the phone,
+     and tap **Send pairing request**.
+   - An **Approve** window opens on the laptop. Check that the phone key matches, choose projects and
+     whether the phone may send input (off means read-only), then click **Approve**.
+   - The phone shows **Paired with …** and then the live sessions.
+6. Manage phones in the desktop **Devices** screen: turn access on or off, or use **Revoke access**, which
+   disconnects the phone at once. **Activity** shows every pairing, sign-in and change.
 
-Troubleshooting: if the app shows *Offline*, check `/health` on the laptop, run `adb reverse --list`,
-then tap **Try again**.
+Troubleshooting: if pairing says it could not reach the computer, check `/health` on the laptop and run
+`adb reverse --list`. If the code expired, click **New code** on the desktop.
 
 ## C. Cloudflare tunnel (phase 2: remote access over mobile data)
 
-**Complete phase 3 (pairing and authentication) before you leave this tunnel running with real sessions.**
-Until then the agent serves anyone who reaches the URL. It only has demo data, but don't rely on that.
+Phase 3 (pairing and authentication) is done, so only approved phones can use the tunnel.
 
 1. **Put the domain on Cloudflare.** Log in at dash.cloudflare.com (the free plan is fine), click
    *Add a domain*, and enter `appsdev.qzz.io`. Cloudflare shows two nameservers. At the DigitalPlat domain
@@ -69,8 +78,8 @@ Until then the agent serves anyone who reaches the URL. It only has demo data, b
    there and change `credentials-file` in the copied `config.yml` to the new path. Then run
    `sc stop cloudflared` followed by `sc start cloudflared`, and reboot once to confirm the health URL
    still works.
-9. In the app, go to Settings → Desktop agent address → `wss://agent.appsdev.qzz.io/ws` → Save.
-   (Phase 3 fills this in automatically from the pairing QR.)
+9. Pair the phone with the **Anywhere · tunnel** option. The QR carries `https://agent.appsdev.qzz.io`, so
+   the phone then works over mobile data. A phone paired over USB has to be paired again this way.
 10. Cloudflare Access (Zero Trust) is optional and deferred to phase 8.
 
 ## D. Later phases

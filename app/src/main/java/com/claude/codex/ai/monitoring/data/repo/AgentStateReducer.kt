@@ -2,8 +2,10 @@ package com.claude.codex.ai.monitoring.data.repo
 
 import com.claude.codex.ai.monitoring.data.mapper.toModel
 import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
+import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.TimelineEventModel
+import com.claude.codex.ai.monitoring.protocol.ErrorCode
 import com.claude.codex.ai.monitoring.protocol.Message
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 
@@ -25,6 +27,7 @@ object AgentStateReducer {
                 timelines = state.timelines.filterKeys { it in known },
                 hasSnapshot = true,
                 lastConnectedAtMs = nowMs,
+                canSendInput = message.canSendInput,
             )
         }
 
@@ -66,6 +69,14 @@ object AgentStateReducer {
         else -> state
     }
 
+    /** The desktop's refusal, if [message] is one; such refusals stop reconnecting. */
+    fun refusalOf(message: Message): AuthProblem? = when {
+        message is Message.Revoked -> AuthProblem.REVOKED
+        message is Message.Error && message.code == ErrorCode.NOT_PAIRED -> AuthProblem.NOT_PAIRED
+        message is Message.Error && message.code == ErrorCode.AUTH_FAILED -> AuthProblem.AUTH_FAILED
+        else -> null
+    }
+
     fun onDisconnected(state: AgentSnapshotModel, consecutiveFailures: Int): AgentSnapshotModel = state.copy(
         connection = if (consecutiveFailures >= OFFLINE_AFTER_FAILURES) {
             ConnectionStatus.Offline(lastConnectedAtMs = state.lastConnectedAtMs)
@@ -73,6 +84,10 @@ object AgentStateReducer {
             ConnectionStatus.Reconnecting(attempt = consecutiveFailures)
         },
     )
+
+    /** Once refused, nothing from this computer can be trusted or refreshed, so the data is cleared. */
+    fun onUnauthorized(state: AgentSnapshotModel, problem: AuthProblem): AgentSnapshotModel =
+        AgentSnapshotModel(connection = ConnectionStatus.Unauthorized(problem), computer = state.computer, hasSnapshot = true)
 
     private fun merge(existing: List<TimelineEventModel>, incoming: List<TimelineEventModel>): List<TimelineEventModel> =
         (existing + incoming)

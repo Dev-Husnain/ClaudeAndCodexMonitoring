@@ -16,6 +16,7 @@ import com.claude.codex.ai.monitoring.core.theme.Dimens
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
+import com.claude.codex.ai.monitoring.core.utils.resolve
 import com.claude.codex.ai.monitoring.presentation.home.components.HomeHeader
 import com.claude.codex.ai.monitoring.presentation.home.components.HomeLoading
 import com.claude.codex.ai.monitoring.presentation.home.components.HomeSessionList
@@ -41,14 +42,26 @@ fun HomeScreen(
             HomeHeader(
                 computerName = state.computerName,
                 connection = state.connection,
+                readOnly = state.readOnly,
                 onSettingsClick = onSettingsClick,
             )
+            val unauthorized = state.unauthorized
             when {
+                unauthorized != null -> StateMessage(
+                    icon = R.drawable.ic_shield,
+                    title = stringResource(unauthorized.title),
+                    message = unauthorized.message.resolve(),
+                    tone = StatusTone.ERROR,
+                    actionLabel = stringResource(R.string.action_pair_again),
+                    actionIcon = R.drawable.ic_scan,
+                    onAction = { viewModel.onEvent(HomeEvent.OnPairAgainClick) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 state.isLoading -> HomeLoading()
                 state.isOffline -> StateMessage(
                     icon = R.drawable.ic_offline,
                     title = stringResource(R.string.home_offline_title),
-                    message = stringResource(R.string.home_offline_message),
+                    message = state.offlineMessage?.resolve().orEmpty(),
                     tone = StatusTone.ERROR,
                     actionLabel = stringResource(R.string.action_retry),
                     actionIcon = R.drawable.ic_refresh,

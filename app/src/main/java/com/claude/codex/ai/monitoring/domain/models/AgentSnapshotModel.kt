@@ -11,4 +11,6 @@ data class AgentSnapshotModel(
     /** True once a `ready` snapshot has been received at least once. */
     val hasSnapshot: Boolean = false,
     val lastConnectedAtMs: Long? = null,
+    /** From the owner's grant; false means read-only. */
+    val canSendInput: Boolean = false,
 )

@@ -5,6 +5,8 @@ import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.protocol.ComputerDto
 import com.claude.codex.ai.monitoring.protocol.ControlMode
+import com.claude.codex.ai.monitoring.protocol.ErrorCode
+import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.protocol.EventKind
 import com.claude.codex.ai.monitoring.protocol.Message
 import com.claude.codex.ai.monitoring.protocol.ProjectDto
@@ -96,5 +98,24 @@ class AgentStateReducerTest {
         assertIs<ConnectionStatus.Offline>(offline.connection)
         assertEquals(42L, (offline.connection as ConnectionStatus.Offline).lastConnectedAtMs)
         assertEquals(1, offline.sessions.size)
+    }
+
+    @Test
+    fun `revoked and auth refusals are recognised, other errors are not`() {
+        assertEquals(AuthProblem.REVOKED, AgentStateReducer.refusalOf(Message.Revoked))
+        assertEquals(AuthProblem.NOT_PAIRED, AgentStateReducer.refusalOf(Message.Error(ErrorCode.NOT_PAIRED, "")))
+        assertEquals(AuthProblem.AUTH_FAILED, AgentStateReducer.refusalOf(Message.Error(ErrorCode.AUTH_FAILED, "")))
+        assertNull(AgentStateReducer.refusalOf(Message.Error(ErrorCode.RATE_LIMITED, "")))
+        assertNull(AgentStateReducer.refusalOf(Message.Pong))
+    }
+
+    @Test
+    fun `unauthorized clears everything learned from the computer`() {
+        val connected = AgentStateReducer.onMessage(AgentSnapshotModel(), ready.copy(canSendInput = true), 1)
+        assertTrue(connected.canSendInput)
+        val refused = AgentStateReducer.onUnauthorized(connected, AuthProblem.REVOKED)
+        assertEquals(ConnectionStatus.Unauthorized(AuthProblem.REVOKED), refused.connection)
+        assertTrue(refused.sessions.isEmpty())
+        assertEquals(false, refused.canSendInput)
     }
 }

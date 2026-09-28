@@ -8,12 +8,8 @@ import com.claude.codex.ai.monitoring.domain.models.ThemeMode
 @Immutable
 data class SettingsUiState(
     val themeOptions: List<ThemeOptionUiModel> = ThemeMode.entries.map { ThemeOptionUiModel(it, it.labelRes(), it == ThemeMode.SYSTEM) },
-    val serverUrlInput: String = "",
-    @param:StringRes val serverUrlError: Int? = null,
-    val serverUrlSaved: Boolean = false,
     val hapticsEnabled: Boolean = true,
     val appVersion: String = "",
-    val deviceId: String = "",
 )
 
 @Immutable

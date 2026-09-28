@@ -30,4 +30,5 @@ fun ConnectionStatus.toUiModel(): ConnectionUiModel = when (this) {
     is ConnectionStatus.Connected -> ConnectionUiModel(StatusTone.DONE, UiText.Res(R.string.connection_connected))
     is ConnectionStatus.Reconnecting -> ConnectionUiModel(StatusTone.WAITING, UiText.Res(R.string.connection_reconnecting))
     is ConnectionStatus.Offline -> ConnectionUiModel(StatusTone.ERROR, UiText.Res(R.string.connection_offline))
+    is ConnectionStatus.Unauthorized -> ConnectionUiModel(StatusTone.ERROR, UiText.Res(R.string.connection_unauthorized))
 }
