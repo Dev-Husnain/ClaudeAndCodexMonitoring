@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.UiText
+import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.presentation.common.ConnectionUiModel
 
 @Immutable
@@ -30,6 +31,9 @@ data class SessionDetailUiState(
     val sending: Boolean = false,
     val deliveryNote: UiText? = null,
     val deliveryTone: StatusTone = StatusTone.STALE,
+    /** Started with `agentmon claude`: its terminal can be shown and typed into. */
+    val hasTerminal: Boolean = false,
+    val tab: DetailTab = DetailTab.ACTIVITY,
 ) {
     /** Copies the fields the screen owns locally (typing, sending) onto a fresh server-derived state. */
     fun withLocalFrom(previous: SessionDetailUiState) = copy(
@@ -38,8 +42,18 @@ data class SessionDetailUiState(
         sending = previous.sending,
         deliveryNote = previous.deliveryNote,
         deliveryTone = previous.deliveryTone,
+        tab = if (hasTerminal) previous.tab else DetailTab.ACTIVITY,
     )
 }
+
+enum class DetailTab { ACTIVITY, TERMINAL }
+
+/** The Terminal tab; [screen] is null until the computer sends the first screen. */
+@Immutable
+data class TerminalUiState(
+    val visible: Boolean = false,
+    val screen: TerminalScreenModel? = null,
+)
 
 /** Everything the control widgets need, bundled so the list takes one parameter. */
 @Immutable

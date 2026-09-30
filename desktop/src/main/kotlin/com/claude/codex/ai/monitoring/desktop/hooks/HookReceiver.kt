@@ -4,6 +4,7 @@ import com.claude.codex.ai.monitoring.desktop.control.ControlCenter
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.session.SessionTracker
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.protocol.AgentCrypto
 
 /** Outcome of one POST /hook, mapped to an HTTP status by the route. */
@@ -27,13 +28,16 @@ class HookReceiver(
 ) {
     private var lastRejectionAuditMs = 0L
 
-    suspend fun receive(secretHeader: String?, viaTunnel: Boolean, body: String): HookResponse {
+    /** [wrapperHeader] is the wrapper id when Claude was started by `agentmon claude`, else blank. */
+    suspend fun receive(secretHeader: String?, viaTunnel: Boolean, body: String, wrapperHeader: String? = null): HookResponse {
         if (viaTunnel || secretHeader == null || !AgentCrypto.secretsEqual(secretHeader, secret)) {
             auditRejection(if (viaTunnel) "Hook call through the tunnel refused" else "Hook call with a wrong secret refused")
             return HookResponse(HookResult.FORBIDDEN)
         }
-        val event = runCatching { HookEventDto.json.decodeFromString(HookEventDto.serializer(), body) }.getOrNull()
+        val decoded = runCatching { HookEventDto.json.decodeFromString(HookEventDto.serializer(), body) }.getOrNull()
             ?: return HookResponse(HookResult.BAD_REQUEST)
+        // Claude started by `agentmon claude` is filed under its terminal's session.
+        val event = decoded.copy(sessionId = WrapperHub.sessionIdFor(decoded.sessionId, wrapperHeader))
         if (!tracker.onHook(event)) return HookResponse(HookResult.IGNORED)
 
         val reply = when (event.eventName) {

@@ -17,6 +17,8 @@ Every screen below uses the same source.
   are JVM, so plain JVM avoids AGP 9 + KMP friction (decision D1).
 - `:app` is the Android app, package `com.claude.codex.ai.monitoring`.
 - `:desktop` is the Compose Desktop tray app plus the Ktor server on 127.0.0.1:8787.
+- `:cli` is `agentmon claude`: Claude Code in a pseudo-terminal (pty4j/ConPTY + JLine raw mode), linked to the
+  agent on `/wrapper` so the phone can see and type into the terminal (M5b).
 
 **`:app` layering** follows guidelines §5.1: `domain` (pure Kotlin) ← `data` (DataStore, Ktor) and
 `presentation` (MVVM). Koin DSL modules live in `di/` (`appModule`, `dataModule`, `domainModule`,
@@ -74,6 +76,10 @@ All versions are pinned to releases built against Kotlin ≤ 2.2, so the project
 | ML Kit barcode-scanning (bundled model) | 17.3.0 | QR decoding without Play Services (**new, M3**) |
 | SQLDelight (sqlite-driver) | 2.1.0 | desktop device store and audit log, spec §5 (**new, M3**) |
 | ZXing core | 3.5.4 | desktop QR generation, spec §5 (**new, M3**) |
+| pty4j | 0.13.13 | `agentmon claude` pseudo-terminal (ConPTY on Windows), spec §5 (**new, M5b**) |
+| JLine terminal (JNI) | 3.30.17 | raw console input for the wrapper; jline 4 needs Java 22 (**new, M5b**) |
+| jediterm-core | 3.72 | headless terminal emulator for the phone's terminal mirror; 3.73+ need Kotlin 2.4, so 3.72 is pinned; from JetBrains' Maven repo, limited to its group in settings (**new, M5b**) |
+| slf4j-nop | 2.0.17 | keeps library logging off Claude's screen in the CLI (**new, M5b**) |
 
 ## 5. Feature Progress
 ### Feature: Foundation (M0)
@@ -144,11 +150,29 @@ DataStore. It is covered by the manual gate above.
   written; reply typed on the phone at Stop → Claude continued, asked again, approved again, edited the file;
   "Let it stop" → Claude exited. Away mode was toggled from the phone.
 
+### Feature: Wrapper + terminal mirror (M5b, spec phase 5)
+- [x] `:cli` `agentmon claude`: PTY (ConPTY), raw keyboard pass-through, resize, UTF-8 safe output, finds `claude`
+  like the shell (npm `.cmd` shims via `cmd /c claude`), `AGENTMON_CLAUDE` override; runs Claude normally
+  when the agent is down and links up later (replaying recent output)
+- [x] `/wrapper` WebSocket (hook secret, tunnel refused); one terminal = one session (wrapper id), visible
+  before the first prompt; hooks aliased onto it through `X-Agentmon-Wrapper` + `allowedEnvVars`
+- [x] Typing into the TUI (Enter as a separate keystroke, bracketed paste for multi-line), `terminal.key`,
+  quick actions via `ClaudeCodePromptProfile` when no hook is held
+- [x] Terminal mirror: headless JediTerm → `terminal.screen` (200 lines, ≤ 4/s, only on change), only to attached
+  phones; read-only phones may watch but not type
+- [x] Phone: Activity / Terminal tabs for wrapper sessions, live terminal (colours, follow + "Jump to latest",
+  sideways scroll, pinch zoom), keys row, composer types into the terminal; attached only while the tab is open
+- [x] Tests: mirror (4), wrapper link incl. security and read-only (4), CLI (5), codec/wrapper frames (2), detail
+  VM terminal (3), terminal mapper (2); 122 tests in total (app 47, shared 14, desktop 56, cli 5)
+- [x] Verified on this PC: interactive `agentmon claude` in Windows Terminal renders normally, the session
+  showed as Controllable before any prompt, and the wrapper re-linked by itself after an agent restart
+- [ ] **Gate:** type into the terminal and approve from the Xiaomi (phone was locked; pending)
+
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
 |---|---|---|---|---|
 | Home | portrait + resizable | spec §9.3 #2 | `presentation/home/HomeScreen.kt` | Done |
-| Session detail (activity) | portrait + resizable | spec §9.3 #3 | `presentation/sessiondetail/SessionDetailScreen.kt` | Done (composer + controls; terminal tab in M5b) |
+| Session detail (activity) | portrait + resizable | spec §9.3 #3 | `presentation/sessiondetail/SessionDetailScreen.kt` | Done (Activity + Terminal tabs, composer, controls) |
 | Settings | portrait + resizable | spec §9.3 #6 | `presentation/settings/SettingsScreen.kt` | Done (notifications in M7) |
 | Onboarding | portrait + resizable | spec §9.3 #1 | `presentation/onboarding/OnboardingScreen.kt` | Done |
 | Pair (scan / code / confirm / wait / success) | portrait + resizable | spec §9.3 #1 | `presentation/pair/PairScreen.kt` | Done |
@@ -171,7 +195,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M3 Pairing + mutual auth | Done, gate verified on a real phone |
 | M4 Hooks + state machine | Done, verified with real `claude` sessions on this PC and the Xiaomi |
 | M5a Control via hooks (Away mode) | Done, gate verified on a real phone |
-| M5b Wrapper (`agentmon claude`) + terminal mirror | Not started |
+| M5b Wrapper (`agentmon claude`) + terminal mirror | Built and tested; phone gate pending |
 | M6 Headless resume | Not started |
 | M7 Notifications (foreground service) | Not started |
 | M8 Hardening + QA | Not started |
@@ -200,6 +224,12 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D18** Away mode is off by default and after every agent restart, so Claude never waits on a phone the owner
   forgot about; turning it off releases anything held.
 - **D19** Instructions are held/queued in memory only and never written to disk (spec: no prompt content in logs).
+- **D20** The phone gets `terminal.screen` (emulated screen lines) instead of the spec's raw `terminal.chunk`:
+  Claude Code redraws in place with cursor movement, so raw chunks cannot be shown as lines.
+- **D21** A wrapper terminal is one phone session keyed by the wrapper id (hooks aliased via `X-Agentmon-Wrapper`),
+  so it is controllable before the first prompt and stays one entry across `/clear`.
+- **D22** Quick actions on wrapper sessions without a held hook press Claude's own keys (Enter/Esc) through a
+  single `ClaudeCodePromptProfile`, so a Claude Code UI change is a one-file fix.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
@@ -208,8 +238,11 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - Demo sessions are opt-in (`--demo`).
 - Whether an already-running Claude session picks up newly installed hooks is not documented; the UI says to restart it.
 - Away mode needs the phone to answer within 50 min; after that Claude falls back to its normal prompt.
-- Text typed on the phone reaches an interactive session only at its next Stop (hooks cannot type into a
-  running TUI); live typing and the terminal tab are M5b.
+- Without the wrapper, text typed on the phone reaches an interactive session only at its next Stop; start
+  Claude with `agentmon claude` to type into it live.
+- `agentmon claude` started from inside another Claude Code session inherits its session markers (Claude then
+  says transcript saving is off); start it from a normal terminal.
+- A `.cmd` given in `AGENTMON_CLAUDE` must not contain spaces (cmd.exe quoting); PATH lookups are fine.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.
 - Default phone name comes from the system (MIUI reports the model, e.g. "M2101K7AG"); it can be edited before sending.

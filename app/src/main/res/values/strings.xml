@@ -190,4 +190,31 @@
     <string name="settings_haptics_summary">Vibrate on send, approve and deny</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version">Version</string>
+
+    <!-- Terminal (sessions started with agentmon claude) -->
+    <string name="detail_tab_activity">Activity</string>
+    <string name="detail_tab_terminal">Terminal</string>
+    <string name="detail_terminal_hint">Messages are typed straight into Claude\'s terminal.</string>
+    <string name="terminal_connecting">Connecting to the terminal…</string>
+    <string name="terminal_jump_latest">Jump to latest</string>
+    <string name="key_enter">Enter</string>
+    <string name="key_escape">Esc</string>
+    <string name="key_tab">Tab</string>
+    <string name="key_shift_tab">⇧ Tab</string>
+    <string name="key_up">↑</string>
+    <string name="key_down">↓</string>
+    <string name="key_ctrl_c">Ctrl+C</string>
+    <string name="key_1">1</string>
+    <string name="key_2">2</string>
+    <string name="key_3">3</string>
+    <string name="key_enter_description">Press Enter</string>
+    <string name="key_escape_description">Press Escape</string>
+    <string name="key_tab_description">Press Tab</string>
+    <string name="key_shift_tab_description">Press Shift and Tab: switch Claude\'s mode</string>
+    <string name="key_up_description">Press arrow up</string>
+    <string name="key_down_description">Press arrow down</string>
+    <string name="key_ctrl_c_description">Press Control C: interrupt Claude</string>
+    <string name="key_1_description">Press 1</string>
+    <string name="key_2_description">Press 2</string>
+    <string name="key_3_description">Press 3</string>
 </resources>

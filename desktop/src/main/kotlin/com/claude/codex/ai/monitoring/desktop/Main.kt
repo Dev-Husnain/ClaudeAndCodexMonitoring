@@ -28,6 +28,8 @@ import com.claude.codex.ai.monitoring.desktop.server.ConnectionHub
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.desktop.simulator.DemoSessionSimulator
 import com.claude.codex.ai.monitoring.desktop.storage.AppStorage
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.desktop.ui.DesktopApp
 import com.claude.codex.ai.monitoring.desktop.ui.aggregateState
 import com.claude.codex.ai.monitoring.desktop.ui.color
@@ -77,10 +79,15 @@ fun main(args: Array<String>) {
     val installer = HookInstaller(HookInstaller.loadOrCreateSecret(dataDir.resolve("hook-secret")))
     // Keep every monitored project's hooks current (new events or timeouts after an update).
     projects.projects.value.forEach { runCatching { installer.install(Path.of(it.path)) } }
-    val hookReceiver = HookReceiver(installer.secret, tracker, audit, control)
-    val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter(), control)
-    val server = AgentServer(handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val wrappers = WrapperHub(registry, scope, projectFor = { projects.projectFor(it)?.projectId })
+    control.wrapper = wrappers
+    val hookReceiver = HookReceiver(installer.secret, tracker, audit, control)
+    val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter(), control, wrappers)
+    val server = AgentServer(
+        handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver,
+        WrapperEndpoint(installer.secret, wrappers, audit),
+    )
     val controller = DesktopController(
         registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope,
     )

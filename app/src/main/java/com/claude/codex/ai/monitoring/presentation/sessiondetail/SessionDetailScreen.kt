@@ -25,7 +25,10 @@ import com.claude.codex.ai.monitoring.core.ui.StatusPill
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.resolve
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.DetailTabs
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.SessionActivityList
+import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TerminalKeysRow
+import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TerminalView
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.SessionComposer
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TimelineLoading
 import org.koin.compose.viewmodel.koinViewModel
@@ -39,6 +42,7 @@ fun SessionDetailScreen(
     viewModel: SessionDetailViewModel = koinViewModel(key = sessionId) { parametersOf(sessionId) },
 ) {
     val state by viewModel.sessionDetailUiState.collectAsStateWithLifecycle()
+    val terminal by viewModel.terminalUiState.collectAsStateWithLifecycle()
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
@@ -83,26 +87,53 @@ fun SessionDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 else -> {
-                    SessionActivityList(
-                        header = header,
-                        timeline = state.timeline,
-                        isOffline = state.isOffline,
-                        controls = state.controls(),
-                        onApprove = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.APPROVE)) },
-                        onDeny = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.DENY)) },
-                        onStop = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.INTERRUPT)) },
-                        onContinue = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.CONTINUE)) },
-                        onAwayModeToggle = { viewModel.onEvent(SessionDetailEvent.OnAwayModeToggle(it)) },
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (state.hasTerminal) {
+                        DetailTabs(
+                            selected = state.tab,
+                            onSelect = { viewModel.onEvent(SessionDetailEvent.OnTabSelect(it)) },
+                            modifier = Modifier.padding(start = Dimens.ScreenPadding, end = Dimens.ScreenPadding, bottom = Dimens.SpaceMd),
+                        )
+                    }
+                    if (state.hasTerminal && state.tab == DetailTab.TERMINAL) {
+                        TerminalView(
+                            screen = terminal.screen,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = Dimens.ScreenPadding),
+                        )
+                        if (state.canControl) {
+                            TerminalKeysRow(
+                                enabled = !state.isOffline,
+                                onKey = { viewModel.onEvent(SessionDetailEvent.OnTerminalKey(it)) },
+                                modifier = Modifier.padding(top = Dimens.SpaceMd),
+                            )
+                        }
+                    } else {
+                        SessionActivityList(
+                            header = header,
+                            timeline = state.timeline,
+                            isOffline = state.isOffline,
+                            controls = state.controls(),
+                            onApprove = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.APPROVE)) },
+                            onDeny = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.DENY)) },
+                            onStop = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.INTERRUPT)) },
+                            onContinue = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.CONTINUE)) },
+                            onAwayModeToggle = { viewModel.onEvent(SessionDetailEvent.OnAwayModeToggle(it)) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     if (state.showComposer) {
                         SessionComposer(
                             text = state.composerText,
                             onTextChange = { viewModel.onEvent(SessionDetailEvent.OnComposerChange(it)) },
                             onSend = { viewModel.onEvent(SessionDetailEvent.OnSendClick) },
                             sending = state.sending,
-                            note = state.deliveryNote?.resolve()
-                                ?: if (!state.awayMode && state.awaiting == null) stringResource(R.string.detail_away_hint) else null,
+                            note = state.deliveryNote?.resolve() ?: when {
+                                state.hasTerminal -> stringResource(R.string.detail_terminal_hint)
+                                !state.awayMode && state.awaiting == null -> stringResource(R.string.detail_away_hint)
+                                else -> null
+                            },
                             noteTone = state.deliveryTone,
                         )
                     }

@@ -22,6 +22,11 @@ sqldelight = "2.1.0"
 zxing = "3.5.4"
 camerax = "1.6.2"
 mlkitBarcode = "17.3.0"
+# 3.72 is the newest jediterm built against Kotlin 2.1 (3.73+ need Kotlin 2.4).
+jediterm = "3.72"
+pty4j = "0.13.13"
+# jline 4 needs Java 22; 3.30 runs on the Java 17 target.
+jline = "3.30.17"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -69,6 +74,10 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
 androidx-camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "camerax" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+jediterm-core = { group = "org.jetbrains.jediterm", name = "jediterm-core", version.ref = "jediterm" }
+pty4j = { group = "org.jetbrains.pty4j", name = "pty4j", version.ref = "pty4j" }
+jline-terminal-jni = { group = "org.jline", name = "jline-terminal-jni", version.ref = "jline" }
+slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4j" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

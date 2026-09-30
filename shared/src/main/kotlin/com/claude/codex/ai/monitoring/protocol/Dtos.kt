@@ -46,3 +46,28 @@ data class TimelineEventDto(
     val title: String,
     val detail: String? = null,
 )
+
+/** One terminal line as runs of equally styled text. */
+@Serializable
+data class TerminalLineDto(val spans: List<TerminalSpanDto>)
+
+/**
+ * A run of text in one style. Colours are `null` for the terminal default, `0..255` for the xterm
+ * palette (0..15 are the theme's ANSI colours), or [RGB_FLAG] or'ed with `0xRRGGBB`.
+ */
+@Serializable
+data class TerminalSpanDto(
+    val text: String,
+    val fg: Int? = null,
+    val bg: Int? = null,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val dim: Boolean = false,
+    /** Swap foreground and background (Claude Code draws its input cursor this way). */
+    val inverse: Boolean = false,
+) {
+    companion object {
+        const val RGB_FLAG = 1 shl 24
+    }
+}

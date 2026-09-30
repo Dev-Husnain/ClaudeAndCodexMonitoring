@@ -25,7 +25,8 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | C→D | `send_input` | `sessionId`, `text` *(phase 5)* |
 | C→D | `quick_action` | `sessionId`, `action: APPROVE/DENY/INTERRUPT/CONTINUE` *(phase 5)* |
 | C→D | `away.set` | `enabled` *(addition, phase 5a)* |
-| C→D | `terminal.attach` / `terminal.detach` | `sessionId` *(phase 5)* |
+| C→D | `terminal.attach` / `terminal.detach` | `sessionId` / – *(phase 5b; one terminal per connection)* |
+| C→D | `terminal.key` | `sessionId`, `key: ENTER/ESCAPE/TAB/SHIFT_TAB/UP/DOWN/CTRL_C/DIGIT_1..3` *(addition, phase 5b; needs input permission)* |
 | C→D | `ping` | – |
 | D→C | `challenge` | `nonce`, `desktopSignature` *(phase 3)* |
 | D→C | `ready` | `computer`, `projects`, `sessions`, `canSendInput`, `awayMode` |
@@ -34,7 +35,7 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | D→C | `session.event` | `sessionId`, `event` |
 | D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |
 | D→C | `session.history.result` | `sessionId`, `events` (oldest first), `hasMore` |
-| D→C | `terminal.chunk` | `sessionId`, `data` *(phase 5)* |
+| D→C | `terminal.screen` | `sessionId`, `columns`, `lines[{spans[{text, fg?, bg?, bold, italic, underline, dim, inverse}]}]` *(replaces the spec's `terminal.chunk`, see below)* |
 | D→C | `ack` | `ackId`, `result: DELIVERED/QUEUED/FAILED`, `detail?` |
 | D→C | `error` | `code`, `message`, `ackId?` |
 | D→C | `pong` / `revoked` | – |
@@ -122,6 +123,43 @@ with an `ack` carrying the request's envelope id.
   its normal prompt on the computer.
 - Registry changes and their `session.update` broadcasts happen under one lock, so phones always end on
   the current state.
+
+## Wrapper and terminal mirror (phase 5b)
+
+`agentmon claude [args]` (the `:cli` module) runs Claude Code in a pseudo-terminal (ConPTY on Windows),
+passes the keyboard and screen through unchanged, and connects to `ws://127.0.0.1:8787/wrapper`. That
+route has the same rules as `/hook`: the hook secret in `X-Agentmon-Secret`, and anything carrying
+Cloudflare headers is refused. When the agent is not running Claude still works; the link retries every
+3 s and replays the last ~200k characters of output when it connects.
+
+Wrapper frames (JSON, `type` discriminator, never sent to phones):
+
+| Direction | type | payload |
+|---|---|---|
+| W→D | `hello` | `wrapperId` (UUID), `cwd`, `columns`, `rows` |
+| W→D | `output` | `data` (terminal output, UTF-8) |
+| W→D | `resize` | `columns`, `rows` |
+| W→D | `exit` | `code` |
+| D→W | `input` | `data` (typed into Claude's terminal as is) |
+
+- **One terminal = one session.** The wrapper id is the session id. The session appears as soon as the
+  wrapper connects from a monitored folder, so the phone can send the first prompt. Claude gets
+  `AGENTMON_WRAPPER_ID` in its environment, and the installed hooks send it back in `X-Agentmon-Wrapper`
+  (`allowedEnvVars: ["AGENTMON_WRAPPER_ID"]`). Hooks with that header are filed under the wrapper's
+  session instead of Claude's own session id, including after `/clear`. Without the wrapper the variable is
+  unset and the header is empty.
+- Wrapper sessions are `WRAPPER` controlled. `send_input` types the text, then Enter 120 ms later as its own
+  keystroke; multi-line text is sent as a bracketed paste when Claude enabled it. With no hook held,
+  `quick_action` presses keys in Claude's own dialog (`ClaudeCodePromptProfile`: APPROVE = Enter,
+  DENY/INTERRUPT = Esc), and APPROVE/DENY only while the session is waiting for input.
+- **Terminal mirror.** The agent feeds the output into a headless terminal emulator (JediTerm) and sends
+  attached phones `terminal.screen`: the newest 200 lines (scrollback plus screen), at most every 250 ms and
+  only when something changed. Raw `terminal.chunk` output is not usable because Claude Code redraws with
+  cursor movement. Colours are `null` (default), `0..255` (xterm palette), or `1<<24 | 0xRRGGBB`.
+  Read-only devices may watch; `terminal.key` and input need "Allow sending input". Terminal content is kept
+  in memory only and never logged.
+- When Claude exits, the session is marked ENDED. When only the link drops (for example the agent restarts),
+  the session falls back to `HOOKS` until the wrapper reconnects.
 
 ## Limits
 

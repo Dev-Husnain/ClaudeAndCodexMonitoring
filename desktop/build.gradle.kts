@@ -30,6 +30,7 @@ dependencies {
     implementation(libs.slf4j.simple)
     implementation(libs.sqldelight.sqlite.driver)
     implementation(libs.zxing.core)
+    implementation(libs.jediterm.core)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)

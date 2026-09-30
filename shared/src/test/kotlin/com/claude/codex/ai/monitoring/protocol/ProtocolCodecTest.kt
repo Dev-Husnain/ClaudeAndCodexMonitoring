@@ -46,7 +46,12 @@ class ProtocolCodecTest {
         Message.SessionEvent("s1", event),
         Message.SessionRemoved("s1", "p1"),
         Message.SessionHistoryResult("s1", listOf(event), hasMore = false),
-        Message.TerminalChunk("s1", "\u001B[32mok\u001B[0m"),
+        Message.TerminalKeyRequest("s1", TerminalKey.SHIFT_TAB),
+        Message.TerminalScreen(
+            "s1",
+            columns = 120,
+            lines = listOf(TerminalLineDto(listOf(TerminalSpanDto("ok", fg = 2, bold = true), TerminalSpanDto(" rgb", fg = TerminalSpanDto.RGB_FLAG or 0x7C5CFF)))),
+        ),
         Message.Ack("a1", DeliveryResult.DELIVERED),
         Message.Error(ErrorCode.READ_ONLY, "Read-only device", ackId = "a2"),
         Message.Pong,

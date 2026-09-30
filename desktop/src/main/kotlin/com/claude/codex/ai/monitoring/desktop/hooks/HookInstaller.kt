@@ -87,7 +87,15 @@ class HookInstaller(
                         // Short, so a hook never holds Claude up. The two events Away mode may hold get a long
                         // timeout; the agent answers them at once unless Away mode is on.
                         put("timeout", timeoutSeconds)
-                        put("headers", buildJsonObject { put(SECRET_HEADER, secret) })
+                        put(
+                            "headers",
+                            buildJsonObject {
+                                put(SECRET_HEADER, secret)
+                                // Empty unless Claude was started by `agentmon claude`; names the wrapper to link.
+                                put(ProtocolConstants.HEADER_WRAPPER, "$" + ProtocolConstants.ENV_WRAPPER_ID)
+                            },
+                        )
+                        put("allowedEnvVars", buildJsonArray { add(JsonPrimitive(ProtocolConstants.ENV_WRAPPER_ID)) })
                     },
                 )
             },
@@ -127,7 +135,7 @@ class HookInstaller(
     }
 
     companion object {
-        const val SECRET_HEADER = "X-Agentmon-Secret"
+        const val SECRET_HEADER = ProtocolConstants.HEADER_SECRET
         private const val TIMEOUT_S = 5
         private const val HOLD_TIMEOUT_S = 3600
 

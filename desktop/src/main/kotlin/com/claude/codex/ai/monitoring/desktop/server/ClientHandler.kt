@@ -8,6 +8,7 @@ import com.claude.codex.ai.monitoring.desktop.devices.PairedDevice
 import com.claude.codex.ai.monitoring.desktop.security.DesktopIdentity
 import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.protocol.AgentCrypto
 import com.claude.codex.ai.monitoring.protocol.AuthPayloads
 import com.claude.codex.ai.monitoring.protocol.DeliveryResult
@@ -20,6 +21,7 @@ import io.ktor.websocket.DefaultWebSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,6 +43,7 @@ class ClientHandler(
     private val audit: AuditLog,
     private val rateLimiter: RateLimiter,
     private val control: ControlCenter? = null,
+    private val wrappers: WrapperHub? = null,
     private val helloTimeoutMs: Long = HELLO_TIMEOUT_MS,
     private val authTimeoutMs: Long = AUTH_TIMEOUT_MS,
 ) {
@@ -100,6 +103,8 @@ class ClientHandler(
                 if (update is Message.AwayModeUpdate || visible(projectId)) send(Frame.Text(codec.encode(update, projectId = projectId)))
             }
         }
+        // At most one terminal per connection: the screen the phone has open.
+        var terminal: Job? = null
         while (true) {
             val frame = receiveFrame() ?: break
             val reply: Message? = when (val message = frame.message) {
@@ -119,18 +124,37 @@ class ClientHandler(
                         else -> registry.history(message.sessionId, message.beforeTs)
                     }
                 }
-                is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode ->
+                is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode, is Message.TerminalKeyRequest ->
                     if (!grant.canSendInput) {
                         Message.Error(ErrorCode.READ_ONLY, "This device is read-only", frame.id)
                     } else {
                         control(message, frame.id, device)
                     }
-                is Message.TerminalAttach, Message.TerminalDetach ->
-                    Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "No terminal for this session", frame.id)
+                is Message.TerminalAttach -> {
+                    val projectId = registry.projectOf(message.sessionId)
+                    terminal?.cancel()
+                    terminal = null
+                    when {
+                        projectId == null -> Message.Error(ErrorCode.SESSION_NOT_FOUND, "Unknown session", frame.id)
+                        !grant.allows(projectId) -> Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", frame.id)
+                        wrappers == null -> Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "No terminal for this session", frame.id)
+                        else -> {
+                            // Watching is allowed for read-only devices too; typing is not.
+                            terminal = launch { wrappers.screens(message.sessionId).collect { send(Frame.Text(codec.encode(it, projectId = projectId))) } }
+                            null
+                        }
+                    }
+                }
+                Message.TerminalDetach -> {
+                    terminal?.cancel()
+                    terminal = null
+                    null
+                }
                 else -> Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", frame.id)
             }
             reply?.let { send(Frame.Text(codec.encode(it))) }
         }
+        terminal?.cancel()
         forwarder.cancel()
     }
 
@@ -143,6 +167,7 @@ class ClientHandler(
         val sessionId = when (message) {
             is Message.SendInput -> message.sessionId
             is Message.QuickActionRequest -> message.sessionId
+            is Message.TerminalKeyRequest -> message.sessionId
             else -> return Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", ackId)
         }
         val projectId = registry.projectOf(sessionId) ?: return Message.Error(ErrorCode.SESSION_NOT_FOUND, "Unknown session", ackId)
@@ -150,6 +175,7 @@ class ClientHandler(
         val delivery = when (message) {
             is Message.SendInput -> center.deliverText(sessionId, message.text)
             is Message.QuickActionRequest -> center.quickAction(sessionId, message.action)
+            is Message.TerminalKeyRequest -> center.pressKey(sessionId, message.key)
             else -> return Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", ackId)
         }
         return Message.Ack(ackId, delivery.result, delivery.detail)

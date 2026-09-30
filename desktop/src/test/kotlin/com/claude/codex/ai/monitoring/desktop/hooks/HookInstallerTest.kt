@@ -37,7 +37,11 @@ class HookInstallerTest {
         HookInstaller.EVENTS.forEach { event ->
             val hook = hooks.getValue(event).jsonArray.single().jsonObject.getValue("hooks").jsonArray.single().jsonObject
             assertEquals("http", hook.getValue("type").jsonPrimitive.content)
-            assertEquals("s".repeat(43), hook.getValue("headers").jsonObject.getValue(HookInstaller.SECRET_HEADER).jsonPrimitive.content)
+            val headers = hook.getValue("headers").jsonObject
+            assertEquals("s".repeat(43), headers.getValue(HookInstaller.SECRET_HEADER).jsonPrimitive.content)
+            // The wrapper id comes from Claude's environment, and only that variable may be interpolated.
+            assertEquals("\$AGENTMON_WRAPPER_ID", headers.getValue("X-Agentmon-Wrapper").jsonPrimitive.content)
+            assertEquals(listOf("AGENTMON_WRAPPER_ID"), hook.getValue("allowedEnvVars").jsonArray.map { it.jsonPrimitive.content })
         }
         assertTrue(installer.isInstalled(project))
     }

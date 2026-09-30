@@ -37,6 +37,10 @@ enum class AwaitingKind {
 @Serializable
 enum class QuickAction { APPROVE, DENY, INTERRUPT, CONTINUE }
 
+/** Keys the phone can press in a wrapper session's terminal. */
+@Serializable
+enum class TerminalKey { ENTER, ESCAPE, TAB, SHIFT_TAB, UP, DOWN, CTRL_C, DIGIT_1, DIGIT_2, DIGIT_3 }
+
 @Serializable
 enum class EventKind { SESSION_START, PROMPT, TOOL_USE, TOOL_RESULT, NOTIFICATION, MESSAGE, STOP, ERROR, SESSION_END }
 

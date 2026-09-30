@@ -105,5 +105,17 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
      / Stop**. When Claude finishes, type the next step in **Message Claude…** (or tap **Continue** / **Let
      it stop**). A message sent while Claude is still working is delivered when it finishes that turn.
   4. Back at the computer, turn Away mode off: anything still waiting falls back to Claude's normal prompt.
+- **Phase 5b: type into Claude's terminal from the phone (`agentmon claude`).**
+  1. Build the wrapper once: `./gradlew :cli:installDist`. It lands in `cli\build\install\agentmon\bin`.
+     Add that folder to your user PATH (Windows: Start → "Edit environment variables for your account" →
+     Path → New), then open a new terminal.
+  2. In a monitored project folder, start Claude with `agentmon claude` instead of `claude`. All `claude`
+     arguments work (`agentmon claude --resume`, …). The desktop agent should be running; if it is not,
+     Claude still starts and links up once the agent is back.
+  3. On the phone the session shows **Controllable** and gets a **Terminal** tab: the live screen, keys
+     (Enter, Esc, arrows, ⇧Tab, 1–3, Ctrl+C) and the message box, which types straight into Claude. Two
+     fingers zoom the terminal.
+  4. After you change the hooks version (agent update), restart running Claude sessions once so they
+     pick up the new hook settings.
 - **Phase 7 (notifications):** allow notifications for AgentMon, and turn off battery optimisation for it
   (Settings → Apps → AgentMon → Battery → Unrestricted; Xiaomi/MIUI also needs *Autostart*).

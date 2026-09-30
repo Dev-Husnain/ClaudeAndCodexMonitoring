@@ -9,21 +9,30 @@ import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.core.utils.ticks
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.SettingsRepository
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionDetailUseCase
 import com.claude.codex.ai.monitoring.domain.usecase.SendInstructionUseCase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SessionDetailViewModel(
     private val sessionId: String,
     observeSessionDetail: ObserveSessionDetailUseCase,
@@ -38,6 +47,18 @@ class SessionDetailViewModel(
 
     private val _effects = Channel<SessionDetailEffect>(Channel.BUFFERED)
     val effects: Flow<SessionDetailEffect> = _effects.receiveAsFlow()
+
+    /**
+     * The terminal, attached on the computer only while the Terminal tab is open and the screen is
+     * collected (WhileSubscribed), so nothing streams in the background.
+     */
+    val terminalUiState: StateFlow<TerminalUiState> = _sessionDetailUiState
+        .map { it.hasTerminal && it.tab == DetailTab.TERMINAL }
+        .distinctUntilChanged()
+        .flatMapLatest { visible ->
+            if (visible) agentRepository.terminal(sessionId).map { TerminalUiState(visible = true, screen = it) } else flowOf(TerminalUiState())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TerminalUiState())
 
     init {
         viewModelScope.launch {
@@ -55,6 +76,10 @@ class SessionDetailViewModel(
             SessionDetailEvent.OnSendClick -> send()
             is SessionDetailEvent.OnQuickAction -> quickAction(event.action)
             is SessionDetailEvent.OnAwayModeToggle -> setAwayMode(event.enabled)
+            is SessionDetailEvent.OnTabSelect -> _sessionDetailUiState.update {
+                it.copy(tab = if (it.hasTerminal) event.tab else DetailTab.ACTIVITY)
+            }
+            is SessionDetailEvent.OnTerminalKey -> pressKey(event.key)
         }
     }
 
@@ -72,6 +97,14 @@ class SessionDetailViewModel(
         if (_sessionDetailUiState.value.sending) return
         startSending()
         viewModelScope.launch { finishSending(agentRepository.quickAction(sessionId, action), clearComposer = false) }
+    }
+
+    private fun pressKey(key: TerminalKeyType) {
+        viewModelScope.launch {
+            val status = agentRepository.pressKey(sessionId, key)
+            // Keys are fast and frequent: only a failure is worth a note.
+            if (status is DeliveryStatus.Failed) finishSending(status, clearComposer = false)
+        }
     }
 
     private fun setAwayMode(enabled: Boolean) {
@@ -105,5 +138,9 @@ class SessionDetailViewModel(
         if (status != null && settingsRepository.settings.first().hapticsEnabled) {
             _effects.send(SessionDetailEffect.Haptic(success = status !is DeliveryStatus.Failed))
         }
+    }
+
+    private companion object {
+        const val STOP_TIMEOUT_MS = 5_000L
     }
 }

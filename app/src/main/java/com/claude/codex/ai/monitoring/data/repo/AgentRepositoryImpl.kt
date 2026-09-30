@@ -2,6 +2,7 @@ package com.claude.codex.ai.monitoring.data.repo
 
 import com.claude.codex.ai.monitoring.core.utils.Clock
 import com.claude.codex.ai.monitoring.data.mapper.toDto
+import com.claude.codex.ai.monitoring.data.mapper.toModel
 import com.claude.codex.ai.monitoring.data.network.AgentSocketDataSource
 import com.claude.codex.ai.monitoring.data.network.OutgoingMessage
 import com.claude.codex.ai.monitoring.data.network.DesktopIdentityException
@@ -12,6 +13,8 @@ import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
+import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.domain.models.PairingModel
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.PairingRepository
@@ -27,12 +30,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -62,6 +69,10 @@ class AgentRepositoryImpl(
     /** Requests waiting for the desktop's `ack` / `error`, by envelope id. */
     private val pendingAcks = ConcurrentHashMap<String, CompletableDeferred<Message>>()
     private val reconnectRequests = Channel<Unit>(Channel.CONFLATED)
+
+    /** The terminal a screen is showing (at most one), re-attached after every reconnect. */
+    private val attachedTerminal = MutableStateFlow<String?>(null)
+    private val terminalScreen = MutableStateFlow<Pair<String, TerminalScreenModel>?>(null)
     private var currentTarget: PairingModel? = null
 
     override val snapshot: StateFlow<AgentSnapshotModel> = channelFlow {
@@ -94,6 +105,20 @@ class AgentRepositoryImpl(
         request(Message.QuickActionRequest(sessionId, action.toDto()))
 
     override suspend fun setAwayMode(enabled: Boolean): DeliveryStatus = request(Message.SetAwayMode(enabled))
+
+    override fun terminal(sessionId: String): Flow<TerminalScreenModel?> = flow {
+        attachedTerminal.value = sessionId
+        terminalScreen.update { current -> current?.takeIf { it.first == sessionId } }
+        outgoing.trySend(OutgoingMessage(Message.TerminalAttach(sessionId)))
+        try {
+            emitAll(terminalScreen.map { screen -> screen?.takeIf { it.first == sessionId }?.second }.distinctUntilChanged())
+        } finally {
+            if (attachedTerminal.compareAndSet(sessionId, null)) outgoing.trySend(OutgoingMessage(Message.TerminalDetach))
+        }
+    }
+
+    override suspend fun pressKey(sessionId: String, key: TerminalKeyType): DeliveryStatus =
+        request(Message.TerminalKeyRequest(sessionId, key.toDto()))
 
     /** Sends [message] and waits for the desktop to confirm it (`ack`) or refuse it (`error`). */
     private suspend fun request(message: Message): DeliveryStatus {
@@ -157,6 +182,9 @@ class AgentRepositoryImpl(
                     when (message) {
                         is Message.Ack -> pendingAcks[message.ackId]?.complete(message)
                         is Message.Error -> message.ackId?.let { pendingAcks[it]?.complete(message) }
+                        // Kept out of the snapshot: screens change often and only the open one matters.
+                        is Message.TerminalScreen -> terminalScreen.value = message.sessionId to message.toModel()
+                        is Message.Ready -> attachedTerminal.value?.let { outgoing.trySend(OutgoingMessage(Message.TerminalAttach(it))) }
                         else -> Unit
                     }
                     state.update { AgentStateReducer.onMessage(it, message, clock.nowMs()) }

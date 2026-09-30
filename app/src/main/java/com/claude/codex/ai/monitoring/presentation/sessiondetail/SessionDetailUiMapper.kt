@@ -35,6 +35,7 @@ fun SessionDetailModel.toUiState(sessionId: String, nowMs: Long): SessionDetailU
         showComposer = canSendInput && session != null && session.status != SessionStatus.ENDED,
         awayMode = awayMode,
         awaiting = session?.awaiting?.let { AwaitingUiModel(isPermission = it.kind == AwaitingKind.PERMISSION, detail = it.detail) },
+        hasTerminal = session?.control == SessionControl.WRAPPER && session.status != SessionStatus.ENDED,
     )
 }
 

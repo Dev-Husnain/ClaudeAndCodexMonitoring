@@ -3,8 +3,13 @@ package com.claude.codex.ai.monitoring.fakes
 import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
+import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 
 class FakeAgentRepository(initial: AgentSnapshotModel = AgentSnapshotModel()) : AgentRepository {
     override val snapshot = MutableStateFlow(initial)
@@ -37,6 +42,20 @@ class FakeAgentRepository(initial: AgentSnapshotModel = AgentSnapshotModel()) : 
 
     override suspend fun setAwayMode(enabled: Boolean): DeliveryStatus {
         awayModeRequests += enabled
+        return nextDelivery
+    }
+
+    /** The screen of the attached terminal; [attachedTerminals] counts how many collectors are attached. */
+    val terminalScreen = MutableStateFlow<TerminalScreenModel?>(null)
+    var attachedTerminals = 0
+        private set
+    val keys = mutableListOf<Pair<String, TerminalKeyType>>()
+
+    override fun terminal(sessionId: String): Flow<TerminalScreenModel?> =
+        terminalScreen.onStart { attachedTerminals++ }.onCompletion { attachedTerminals-- }
+
+    override suspend fun pressKey(sessionId: String, key: TerminalKeyType): DeliveryStatus {
+        keys += sessionId to key
         return nextDelivery
     }
 }

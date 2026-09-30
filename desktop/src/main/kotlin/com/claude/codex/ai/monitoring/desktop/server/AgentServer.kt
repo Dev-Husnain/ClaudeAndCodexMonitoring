@@ -5,6 +5,7 @@ import com.claude.codex.ai.monitoring.desktop.hooks.HookReceiver
 import com.claude.codex.ai.monitoring.desktop.hooks.HookResult
 import com.claude.codex.ai.monitoring.desktop.pairing.PairingManager
 import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
 import com.claude.codex.ai.monitoring.protocol.PairRequestDto
 import com.claude.codex.ai.monitoring.protocol.PairResponseDto
 import com.claude.codex.ai.monitoring.protocol.PairStatus
@@ -28,13 +29,14 @@ import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 
-/** Installs `/health`, `/pair` and `/ws`. Kept separate from [AgentServer.start] so tests can use `testApplication`. */
+/** Installs `/health`, `/pair`, `/hook`, `/wrapper` and `/ws`. Kept separate from [AgentServer.start] so tests can use `testApplication`. */
 fun Application.agentModule(
     handler: ClientHandler,
     pairing: PairingManager,
     pairingLimiter: RateLimiter,
     version: String,
     hooks: HookReceiver? = null,
+    wrappers: WrapperEndpoint? = null,
 ) {
     install(WebSockets) {
         pingPeriodMillis = PING_PERIOD_MS
@@ -66,11 +68,11 @@ fun Application.agentModule(
         }
         if (hooks != null) {
             post(ProtocolConstants.PATH_HOOK) {
-                val viaTunnel = call.request.headers["CF-Connecting-IP"] != null || call.request.headers["Cf-Ray"] != null
                 val response = hooks.receive(
                     secretHeader = call.request.headers[HookInstaller.SECRET_HEADER],
-                    viaTunnel = viaTunnel,
+                    viaTunnel = call.viaTunnel(),
                     body = call.receiveText().take(MAX_HOOK_BODY),
+                    wrapperHeader = call.request.headers[ProtocolConstants.HEADER_WRAPPER],
                 )
                 // A 2xx with an empty body means "no decision" to Claude Code; a JSON body carries one.
                 val decision = response.body
@@ -87,9 +89,18 @@ fun Application.agentModule(
                 }
             }
         }
+        if (wrappers != null) {
+            webSocket(ProtocolConstants.PATH_WRAPPER) {
+                wrappers.handle(this, secretHeader = call.request.headers[ProtocolConstants.HEADER_SECRET], viaTunnel = call.viaTunnel())
+            }
+        }
         webSocket(ProtocolConstants.PATH_WS) { handler.handle(this, call.remoteAddress()) }
     }
 }
+
+/** The tunnel also terminates on 127.0.0.1; its requests carry Cloudflare headers. */
+private fun ApplicationCall.viaTunnel(): Boolean =
+    request.headers["CF-Connecting-IP"] != null || request.headers["Cf-Ray"] != null
 
 /**
  * The client address. Through the Cloudflare tunnel every request comes from 127.0.0.1, so the
@@ -117,13 +128,14 @@ class AgentServer(
     private val pairingLimiter: RateLimiter,
     private val version: String,
     private val hooks: HookReceiver? = null,
+    private val wrappers: WrapperEndpoint? = null,
     private val port: Int = ProtocolConstants.DEFAULT_PORT,
 ) {
     private var server: EmbeddedServer<*, *>? = null
 
     fun start() {
         server = embeddedServer(CIO, host = ProtocolConstants.LOOPBACK_HOST, port = port) {
-            agentModule(handler, pairing, pairingLimiter, version, hooks)
+            agentModule(handler, pairing, pairingLimiter, version, hooks, wrappers)
         }.start(wait = false)
     }
 

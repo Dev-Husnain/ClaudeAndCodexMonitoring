@@ -45,6 +45,7 @@ sealed interface Message {
     @SerialName("away.set")
     data class SetAwayMode(val enabled: Boolean) : Message
 
+    /** Start receiving [TerminalScreen] for a wrapper session (one terminal per connection). */
     @Serializable
     @SerialName("terminal.attach")
     data class TerminalAttach(val sessionId: String) : Message
@@ -52,6 +53,11 @@ sealed interface Message {
     @Serializable
     @SerialName("terminal.detach")
     data object TerminalDetach : Message
+
+    /** A key pressed on the phone's terminal keys row. Needs input permission; answered with `ack`. */
+    @Serializable
+    @SerialName("terminal.key")
+    data class TerminalKeyRequest(val sessionId: String, val key: TerminalKey) : Message
 
     @Serializable
     @SerialName("ping")
@@ -101,9 +107,15 @@ sealed interface Message {
         val hasMore: Boolean,
     ) : Message
 
+    /**
+     * What the wrapper's terminal shows: the newest lines (scrollback + screen), already interpreted by
+     * the desktop's terminal emulator. Sent only to phones attached to that session, when it changes.
+     * Replaces the spec's raw `terminal.chunk`: Claude Code redraws with cursor movement, so raw output
+     * cannot be shown line by line.
+     */
     @Serializable
-    @SerialName("terminal.chunk")
-    data class TerminalChunk(val sessionId: String, val data: String) : Message
+    @SerialName("terminal.screen")
+    data class TerminalScreen(val sessionId: String, val columns: Int, val lines: List<TerminalLineDto>) : Message
 
     @Serializable
     @SerialName("ack")

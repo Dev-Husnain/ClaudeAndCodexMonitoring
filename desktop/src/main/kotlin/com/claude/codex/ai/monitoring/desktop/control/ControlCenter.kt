@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.desktop.control
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
+import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperInput
 import com.claude.codex.ai.monitoring.protocol.AwaitingDto
 import com.claude.codex.ai.monitoring.protocol.AwaitingKind
 import com.claude.codex.ai.monitoring.protocol.ControlMode
@@ -12,6 +13,7 @@ import com.claude.codex.ai.monitoring.protocol.Message
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import com.claude.codex.ai.monitoring.protocol.QuickAction
 import com.claude.codex.ai.monitoring.protocol.SessionState
+import com.claude.codex.ai.monitoring.protocol.TerminalKey
 import com.claude.codex.ai.monitoring.protocol.TimelineEventDto
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,9 +58,9 @@ class ControlCenter(
     private val heldStops = HashMap<String, CompletableDeferred<String?>>()
     private val queued = HashMap<String, String>()
 
-    /** Set by the wrapper bridge (phase 5b): writes text into a wrapper-started session's terminal. */
+    /** Types into sessions started with `agentmon claude` (phase 5b). */
     @Volatile
-    var wrapperInput: ((sessionId: String, text: String) -> Boolean)? = null
+    var wrapper: WrapperInput? = null
 
     fun setAwayMode(enabled: Boolean, by: String) {
         if (_awayMode.value == enabled) return
@@ -109,7 +111,7 @@ class ControlCenter(
                 held.complete(instruction)
                 Delivery(DeliveryResult.DELIVERED)
             }
-            session.controlMode == ControlMode.WRAPPER && wrapperInput?.invoke(sessionId, instruction) == true ->
+            session.controlMode == ControlMode.WRAPPER && wrapper?.type(sessionId, instruction) == true ->
                 Delivery(DeliveryResult.DELIVERED)
             else -> {
                 synchronized(this) { queued[sessionId] = instruction }
@@ -156,7 +158,40 @@ class ControlCenter(
                 }
             }
         }
+        wrapperQuickAction(sessionId, action)?.let { return it }
         return Delivery(DeliveryResult.FAILED, "Claude is not waiting for you right now")
+    }
+
+    /** A key pressed on the phone's terminal keys row (wrapper sessions only). */
+    fun pressKey(sessionId: String, key: TerminalKey): Delivery {
+        val input = wrapper?.takeIf { it.isWrapped(sessionId) } ?: return Delivery(DeliveryResult.FAILED, "This session has no terminal")
+        return if (input.press(sessionId, key)) Delivery(DeliveryResult.DELIVERED) else Delivery(DeliveryResult.FAILED, "The terminal did not accept the key")
+    }
+
+    /**
+     * Without a held hook, a wrapper session is answered by pressing keys in Claude's own dialog
+     * ([ClaudeCodePromptProfile]). Only while Claude waits for input, so Enter never submits a draft.
+     */
+    private fun wrapperQuickAction(sessionId: String, action: QuickAction): Delivery? {
+        val input = wrapper?.takeIf { it.isWrapped(sessionId) } ?: return null
+        val session = registry.session(sessionId) ?: return null
+        val sent = when (action) {
+            QuickAction.CONTINUE -> if (session.state == SessionState.RUNNING) return null else input.type(sessionId, CONTINUE_TEXT)
+            QuickAction.INTERRUPT -> input.press(sessionId, ClaudeCodePromptProfile.INTERRUPT)
+            QuickAction.APPROVE, QuickAction.DENY -> {
+                if (session.state != SessionState.WAITING_INPUT) return null
+                input.press(sessionId, if (action == QuickAction.APPROVE) ClaudeCodePromptProfile.APPROVE else ClaudeCodePromptProfile.DENY)
+            }
+        }
+        if (!sent) return Delivery(DeliveryResult.FAILED, "The terminal did not accept the key")
+        val title = when (action) {
+            QuickAction.APPROVE -> "Approved from your phone"
+            QuickAction.DENY -> "Denied from your phone"
+            QuickAction.INTERRUPT -> "Stopped from your phone"
+            QuickAction.CONTINUE -> "From your phone"
+        }
+        registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), if (action == QuickAction.CONTINUE) EventKind.PROMPT else EventKind.NOTIFICATION, title, if (action == QuickAction.CONTINUE) CONTINUE_TEXT else null))
+        return Delivery(DeliveryResult.DELIVERED)
     }
 
     private suspend fun <T : Any> hold(held: HashMap<String, CompletableDeferred<T?>>, sessionId: String, awaiting: AwaitingDto): T? {
