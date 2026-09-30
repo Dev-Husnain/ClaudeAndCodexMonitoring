@@ -1,21 +1,28 @@
 package com.claude.codex.ai.monitoring.data.repo
 
 import com.claude.codex.ai.monitoring.core.utils.Clock
+import com.claude.codex.ai.monitoring.data.mapper.toDto
 import com.claude.codex.ai.monitoring.data.network.AgentSocketDataSource
+import com.claude.codex.ai.monitoring.data.network.OutgoingMessage
 import com.claude.codex.ai.monitoring.data.network.DesktopIdentityException
 import com.claude.codex.ai.monitoring.data.network.ReconnectBackoff
 import com.claude.codex.ai.monitoring.data.security.DeviceKeyDataSource
 import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
+import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
+import com.claude.codex.ai.monitoring.domain.models.QuickActionType
 import com.claude.codex.ai.monitoring.domain.models.PairingModel
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.PairingRepository
 import com.claude.codex.ai.monitoring.protocol.AgentCrypto
 import com.claude.codex.ai.monitoring.protocol.AuthPayloads
+import com.claude.codex.ai.monitoring.protocol.DeliveryResult
+import com.claude.codex.ai.monitoring.protocol.ErrorCode
 import com.claude.codex.ai.monitoring.protocol.Message
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.BufferOverflow
@@ -30,6 +37,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Owns the single authenticated connection to the paired computer. It runs while something
@@ -49,7 +57,10 @@ class AgentRepositoryImpl(
 ) : AgentRepository {
 
     private val state = MutableStateFlow(AgentSnapshotModel())
-    private val outgoing = Channel<Message>(capacity = OUTGOING_CAPACITY, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val outgoing = Channel<OutgoingMessage>(capacity = OUTGOING_CAPACITY, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /** Requests waiting for the desktop's `ack` / `error`, by envelope id. */
+    private val pendingAcks = ConcurrentHashMap<String, CompletableDeferred<Message>>()
     private val reconnectRequests = Channel<Unit>(Channel.CONFLATED)
     private var currentTarget: PairingModel? = null
 
@@ -73,7 +84,47 @@ class AgentRepositoryImpl(
     }
 
     override fun requestHistory(sessionId: String) {
-        outgoing.trySend(Message.SessionHistory(sessionId))
+        outgoing.trySend(OutgoingMessage(Message.SessionHistory(sessionId)))
+    }
+
+    override suspend fun sendInstruction(sessionId: String, text: String): DeliveryStatus =
+        request(Message.SendInput(sessionId, text))
+
+    override suspend fun quickAction(sessionId: String, action: QuickActionType): DeliveryStatus =
+        request(Message.QuickActionRequest(sessionId, action.toDto()))
+
+    override suspend fun setAwayMode(enabled: Boolean): DeliveryStatus = request(Message.SetAwayMode(enabled))
+
+    /** Sends [message] and waits for the desktop to confirm it (`ack`) or refuse it (`error`). */
+    private suspend fun request(message: Message): DeliveryStatus {
+        if (state.value.connection !is ConnectionStatus.Connected) {
+            return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED)
+        }
+        val out = OutgoingMessage(message)
+        val reply = CompletableDeferred<Message>()
+        pendingAcks[out.id] = reply
+        return try {
+            if (outgoing.trySend(out).isFailure) return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED)
+            when (val answer = withTimeoutOrNull(ACK_TIMEOUT_MS) { reply.await() }) {
+                null -> DeliveryStatus.Failed(DeliveryStatus.FailureReason.TIMEOUT)
+                is Message.Ack -> when (answer.result) {
+                    DeliveryResult.DELIVERED -> DeliveryStatus.Delivered
+                    DeliveryResult.QUEUED -> DeliveryStatus.Queued
+                    DeliveryResult.FAILED -> DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_WAITING, answer.detail)
+                }
+                is Message.Error -> DeliveryStatus.Failed(
+                    when (answer.code) {
+                        ErrorCode.READ_ONLY -> DeliveryStatus.FailureReason.READ_ONLY
+                        ErrorCode.SESSION_NOT_FOUND -> DeliveryStatus.FailureReason.SESSION_GONE
+                        else -> DeliveryStatus.FailureReason.REJECTED
+                    },
+                    answer.message,
+                )
+                else -> DeliveryStatus.Failed(DeliveryStatus.FailureReason.REJECTED)
+            }
+        } finally {
+            pendingAcks.remove(out.id)
+        }
     }
 
     private suspend fun runConnection(pairing: PairingModel) {
@@ -103,6 +154,11 @@ class AgentRepositoryImpl(
                     outgoing = outgoing,
                 ).collect { message ->
                     refusal = AgentStateReducer.refusalOf(message) ?: refusal
+                    when (message) {
+                        is Message.Ack -> pendingAcks[message.ackId]?.complete(message)
+                        is Message.Error -> message.ackId?.let { pendingAcks[it]?.complete(message) }
+                        else -> Unit
+                    }
                     state.update { AgentStateReducer.onMessage(it, message, clock.nowMs()) }
                     if (message is Message.Ready) failures = 0
                 }
@@ -132,5 +188,6 @@ class AgentRepositoryImpl(
     private companion object {
         const val OUTGOING_CAPACITY = 64
         const val STOP_TIMEOUT_MS = 5_000L
+        const val ACK_TIMEOUT_MS = 15_000L
     }
 }

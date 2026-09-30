@@ -121,15 +121,34 @@ DataStore. It is covered by the manual gate above.
 - [x] Projects screen: add (folder picker) / reinstall / remove; merge-safe installer that never overwrites
   user hooks, refuses invalid JSON and gitignores the settings file; per-project "last event" health
 - [x] SQLDelight migration v1 → v2 (project table), verified on the owner's existing database
-- [x] Tests: state machine (7), installer (6), endpoint (5); 105 tests in total
+- [x] Tests: state machine (7), installer (6), endpoint (5); 87 tests in total at M4
 - [x] **Gate:** a real `claude` session in a monitored folder showed on the Xiaomi with the correct states and
   timeline (Prompt → Read → Finished → Session ended)
+
+### Feature: Control from the phone, Away mode (M5a, spec phase 5 via hooks)
+- [x] `ControlCenter`: in Away mode, holds `PermissionRequest` / `Stop` hooks until the phone answers; documented
+  `decision` / `additionalContext` replies; queued instructions delivered at the next Stop; release on Away off,
+  50-min timeout and SessionEnd
+- [x] Protocol: `away.set`, `away.update`, `awaiting` on sessions, `ack` with DELIVERED / QUEUED / FAILED;
+  input requires the device's "Allow sending input" grant (READ_ONLY otherwise)
+- [x] Phone: Away mode toggle (Home + detail), "Needs you" includes held sessions, awaiting card
+  (Approve / Deny / Stop, Continue / Let it stop), composer with delivery note, haptics
+- [x] Desktop: Away mode switch in the sidebar, "waiting for your phone" line on session tiles
+- [x] Fix: registry state changes and broadcasts are atomic, and the tracker reads/writes a session in one step,
+  so a phone can no longer end on a stale copy (`AwayModeFlowTest`)
+- [x] Fix: the awaiting card / "Needs you" were inserted above the list's scroll anchor and stayed off-screen;
+  the lists now scroll up when something needs the user
+- [x] Tests: ControlCenter (7), Away-mode flow + ordering (2), SessionDetailViewModel (6); 102 tests in total
+  (app 42, shared 12, desktop 48)
+- [x] **Gate:** on the Xiaomi via the tunnel with real `claude -p`: permission approved from the phone → file
+  written; reply typed on the phone at Stop → Claude continued, asked again, approved again, edited the file;
+  "Let it stop" → Claude exited. Away mode was toggled from the phone.
 
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
 |---|---|---|---|---|
 | Home | portrait + resizable | spec §9.3 #2 | `presentation/home/HomeScreen.kt` | Done |
-| Session detail (activity) | portrait + resizable | spec §9.3 #3 | `presentation/sessiondetail/SessionDetailScreen.kt` | Done (composer/terminal in M5) |
+| Session detail (activity) | portrait + resizable | spec §9.3 #3 | `presentation/sessiondetail/SessionDetailScreen.kt` | Done (composer + controls; terminal tab in M5b) |
 | Settings | portrait + resizable | spec §9.3 #6 | `presentation/settings/SettingsScreen.kt` | Done (notifications in M7) |
 | Onboarding | portrait + resizable | spec §9.3 #1 | `presentation/onboarding/OnboardingScreen.kt` | Done |
 | Pair (scan / code / confirm / wait / success) | portrait + resizable | spec §9.3 #1 | `presentation/pair/PairScreen.kt` | Done |
@@ -151,7 +170,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M2 Tunnel (phase 2) | Done: tunnel `agentmon` as the Windows service; pairing and live sessions verified via the tunnel; mobile-data check needs the owner |
 | M3 Pairing + mutual auth | Done, gate verified on a real phone |
 | M4 Hooks + state machine | Done, verified with real `claude` sessions on this PC and the Xiaomi |
-| M5 Wrapper + control | Not started |
+| M5a Control via hooks (Away mode) | Done, gate verified on a real phone |
+| M5b Wrapper (`agentmon claude`) + terminal mirror | Not started |
 | M6 Headless resume | Not started |
 | M7 Notifications (foreground service) | Not started |
 | M8 Hardening + QA | Not started |
@@ -175,6 +195,11 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D16** `/hook` refuses anything carrying Cloudflare headers, since the tunnel also terminates on loopback.
 - **D14** Refusals (revoked, not paired, auth failed, desktop key mismatch) stop reconnecting and clear the cached
   sessions, since nothing from that computer can be trusted until the phone is paired again.
+- **D17** Remote control is built on hooks first (M5a, owner chose "Both"): it works for every hooked session with
+  no wrapper. The PTY wrapper (M5b) adds typing into live interactive sessions and the terminal mirror.
+- **D18** Away mode is off by default and after every agent restart, so Claude never waits on a phone the owner
+  forgot about; turning it off releases anything held.
+- **D19** Instructions are held/queued in memory only and never written to disk (spec: no prompt content in logs).
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
@@ -182,7 +207,9 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 ## 10. Known Gaps / TODO
 - Demo sessions are opt-in (`--demo`).
 - Whether an already-running Claude session picks up newly installed hooks is not documented; the UI says to restart it.
-- The composer, quick actions and terminal tab arrive in M5; they are not shown yet rather than stubbed.
+- Away mode needs the phone to answer within 50 min; after that Claude falls back to its normal prompt.
+- Text typed on the phone reaches an interactive session only at its next Stop (hooks cannot type into a
+  running TUI); live typing and the terminal tab are M5b.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.
 - Default phone name comes from the system (MIUI reports the model, e.g. "M2101K7AG"); it can be edited before sending.

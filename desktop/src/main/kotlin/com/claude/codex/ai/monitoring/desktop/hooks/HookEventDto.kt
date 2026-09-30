@@ -34,6 +34,7 @@ data class HookEventDto(
     @SerialName("error_details") val errorDetails: String? = null,
     // Stop / StopFailure
     @SerialName("last_assistant_message") val lastAssistantMessage: String? = null,
+    @SerialName("stop_hook_active") val stopHookActive: Boolean? = null,
     // SessionEnd
     val reason: String? = null,
 ) {

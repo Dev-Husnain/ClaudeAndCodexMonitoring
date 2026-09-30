@@ -33,7 +33,8 @@ object SessionStateMachine {
             sessionId = hook.sessionId,
             projectId = projectId,
             state = SessionState.RUNNING,
-            controlMode = ControlMode.MONITOR_ONLY,
+            // Every hooked session can be driven from the phone in Away mode (phase 5).
+            controlMode = ControlMode.HOOKS,
             startedAt = nowMs,
             lastEventAt = nowMs,
         )

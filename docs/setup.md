@@ -96,5 +96,14 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
   `.claude/settings.local.json`, keeps your own hooks, and adds the file to `.gitignore` if needed. Start a
   new Claude session there, or restart a running one, and it shows up on the phone. **Remove** takes out
   only AgentMon's hooks. Demo sessions are off now; start the agent with `--demo` to see them.
+- **Phase 5a: control from the phone (Away mode).**
+  1. On the desktop, go to **Devices** and turn on **Allow sending input** for the phone. Read-only phones
+     only watch.
+  2. Before you leave the computer, turn on **Away mode** (phone Home, session screen, or the desktop
+     sidebar). It is off after every restart of the agent, on purpose.
+  3. When Claude asks for permission, the phone shows the session under **Needs you** with **Approve / Deny
+     / Stop**. When Claude finishes, type the next step in **Message Claude…** (or tap **Continue** / **Let
+     it stop**). A message sent while Claude is still working is delivered when it finishes that turn.
+  4. Back at the computer, turn Away mode off: anything still waiting falls back to Claude's normal prompt.
 - **Phase 7 (notifications):** allow notifications for AgentMon, and turn off battery optimisation for it
   (Settings → Apps → AgentMon → Battery → Unrestricted; Xiaomi/MIUI also needs *Autostart*).

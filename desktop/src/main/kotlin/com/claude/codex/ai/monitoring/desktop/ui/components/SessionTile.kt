@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.claude.codex.ai.monitoring.desktop.ui.color
 import com.claude.codex.ai.monitoring.desktop.ui.label
 import com.claude.codex.ai.monitoring.desktop.ui.theme.DesktopTheme
+import com.claude.codex.ai.monitoring.protocol.AwaitingKind
 import com.claude.codex.ai.monitoring.protocol.ControlMode
 import com.claude.codex.ai.monitoring.protocol.SessionDto
 import com.claude.codex.ai.monitoring.protocol.SessionState
@@ -35,9 +36,24 @@ fun SessionTile(
                 Text(session.state.label(), style = MaterialTheme.typography.labelMedium, color = stateColor)
             }
             Text(
-                text = if (session.controlMode == ControlMode.MONITOR_ONLY) "Monitor only" else "Controllable",
+                text = when (session.controlMode) {
+                    ControlMode.MONITOR_ONLY -> "Monitor only"
+                    ControlMode.HOOKS -> "Away mode control"
+                    else -> "Controllable"
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
+            )
+        }
+        session.awaiting?.let { awaiting ->
+            Text(
+                text = when (awaiting.kind) {
+                    AwaitingKind.PERMISSION -> "Waiting for your phone to approve: ${awaiting.detail ?: "a tool"}"
+                    AwaitingKind.REPLY -> "Finished; waiting for your next instruction from the phone"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.waiting,
+                modifier = Modifier.padding(top = 10.dp),
             )
         }
         session.lastMessageSnippet?.let {

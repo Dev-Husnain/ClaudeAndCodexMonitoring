@@ -67,19 +67,24 @@ fun Application.agentModule(
         if (hooks != null) {
             post(ProtocolConstants.PATH_HOOK) {
                 val viaTunnel = call.request.headers["CF-Connecting-IP"] != null || call.request.headers["Cf-Ray"] != null
-                val result = hooks.receive(
+                val response = hooks.receive(
                     secretHeader = call.request.headers[HookInstaller.SECRET_HEADER],
                     viaTunnel = viaTunnel,
                     body = call.receiveText().take(MAX_HOOK_BODY),
                 )
-                // Always an empty body: Claude Code treats any 2xx without JSON as "no decision".
-                call.respond(
-                    when (result) {
-                        HookResult.ACCEPTED, HookResult.IGNORED -> HttpStatusCode.NoContent
-                        HookResult.FORBIDDEN -> HttpStatusCode.Forbidden
-                        HookResult.BAD_REQUEST -> HttpStatusCode.BadRequest
-                    },
-                )
+                // A 2xx with an empty body means "no decision" to Claude Code; a JSON body carries one.
+                val decision = response.body
+                if (decision != null) {
+                    call.respondText(decision, ContentType.Application.Json)
+                } else {
+                    call.respond(
+                        when (response.result) {
+                            HookResult.ACCEPTED, HookResult.IGNORED -> HttpStatusCode.NoContent
+                            HookResult.FORBIDDEN -> HttpStatusCode.Forbidden
+                            HookResult.BAD_REQUEST -> HttpStatusCode.BadRequest
+                        },
+                    )
+                }
             }
         }
         webSocket(ProtocolConstants.PATH_WS) { handler.handle(this, call.remoteAddress()) }

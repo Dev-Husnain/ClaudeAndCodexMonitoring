@@ -1,5 +1,6 @@
 package com.claude.codex.ai.monitoring.desktop
 
+import com.claude.codex.ai.monitoring.desktop.control.ControlCenter
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.devices.DeviceGrant
@@ -46,8 +47,11 @@ class DesktopController(
     val projects: ProjectStore,
     val tracker: SessionTracker,
     private val installer: HookInstaller,
+    val control: ControlCenter,
     private val scope: CoroutineScope,
 ) {
+    fun setAwayMode(enabled: Boolean) = control.setAwayMode(enabled, by = "desktop")
+
     /** Last problem adding or removing a project, shown on the Projects screen until the next action. */
     private val _projectError = MutableStateFlow<String?>(null)
     val projectError: StateFlow<String?> = _projectError.asStateFlow()

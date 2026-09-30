@@ -24,16 +24,18 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | C→D | `session.history` | `sessionId`, `beforeTs?` |
 | C→D | `send_input` | `sessionId`, `text` *(phase 5)* |
 | C→D | `quick_action` | `sessionId`, `action: APPROVE/DENY/INTERRUPT/CONTINUE` *(phase 5)* |
+| C→D | `away.set` | `enabled` *(addition, phase 5a)* |
 | C→D | `terminal.attach` / `terminal.detach` | `sessionId` *(phase 5)* |
 | C→D | `ping` | – |
 | D→C | `challenge` | `nonce`, `desktopSignature` *(phase 3)* |
-| D→C | `ready` | `computer`, `projects`, `sessions` |
+| D→C | `ready` | `computer`, `projects`, `sessions`, `canSendInput`, `awayMode` |
+| D→C | `away.update` | `enabled` *(addition, phase 5a; sent to every connected phone)* |
 | D→C | `session.update` | `session` |
 | D→C | `session.event` | `sessionId`, `event` |
 | D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |
 | D→C | `session.history.result` | `sessionId`, `events` (oldest first), `hasMore` |
 | D→C | `terminal.chunk` | `sessionId`, `data` *(phase 5)* |
-| D→C | `ack` | `ackId`, `result: DELIVERED/FAILED`, `detail?` |
+| D→C | `ack` | `ackId`, `result: DELIVERED/QUEUED/FAILED`, `detail?` |
 | D→C | `error` | `code`, `message`, `ackId?` |
 | D→C | `pong` / `revoked` | – |
 
@@ -98,6 +100,28 @@ tunnel** (identified by the `CF-Connecting-IP` / `Cf-Ray` headers), because the 
 State machine: prompt or tool → RUNNING; PermissionRequest or a permission/elicitation notification →
 WAITING_INPUT; Stop → IDLE; StopFailure → ERROR; SessionEnd → ENDED; RUNNING with 15 minutes of silence →
 STALE.
+
+## Remote control through hooks (phase 5a, "Away mode")
+
+Works for every hooked session, with no wrapper. `send_input`, `quick_action` and `away.set` need a device
+granted **Allow sending input**; otherwise the desktop answers `error READ_ONLY`. Every request is answered
+with an `ack` carrying the request's envelope id.
+
+- **Away mode off** (default, and after every desktop restart): every hook is answered at once, so Claude
+  behaves exactly as without AgentMon.
+- **Away mode on:** a `PermissionRequest` hook is held (hook timeout 3600 s, held for at most 50 min) and the
+  session gets `awaiting {kind: PERMISSION, detail, sinceMs}`. `quick_action APPROVE` answers
+  `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}`; DENY answers
+  `behavior: deny` with a message, and INTERRUPT the same with `interrupt: true`.
+- A `Stop` hook is held the same way with `awaiting {kind: REPLY, detail: Claude's last message}`.
+  `send_input` answers `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"…"}}`, so Claude
+  continues with the text; `quick_action CONTINUE` sends "Continue."; DENY/INTERRUPT lets it stop.
+- `send_input` while Claude is working returns `QUEUED`; the text is delivered at the next `Stop`, even with
+  Away mode off.
+- Turning Away mode off, a timeout or `SessionEnd` releases everything held with "no decision": Claude shows
+  its normal prompt on the computer.
+- Registry changes and their `session.update` broadcasts happen under one lock, so phones always end on
+  the current state.
 
 ## Limits
 

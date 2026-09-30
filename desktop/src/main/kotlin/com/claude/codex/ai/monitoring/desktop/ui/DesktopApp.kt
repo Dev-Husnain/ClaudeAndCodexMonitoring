@@ -31,6 +31,7 @@ import androidx.compose.ui.window.rememberDialogState
 import com.claude.codex.ai.monitoring.desktop.DesktopController
 import com.claude.codex.ai.monitoring.desktop.ui.components.PrimaryButton
 import com.claude.codex.ai.monitoring.desktop.ui.components.StatusDot
+import com.claude.codex.ai.monitoring.desktop.ui.components.SwitchRow
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ActivityScreen
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ApprovalDialogContent
 import com.claude.codex.ai.monitoring.desktop.ui.screens.DevicesScreen
@@ -56,6 +57,7 @@ fun DesktopApp(controller: DesktopController) {
     val projects by controller.projects.projects.collectAsState()
     val lastHookAt by controller.tracker.lastHookAt.collectAsState()
     val projectError by controller.projectError.collectAsState()
+    val awayMode by controller.control.awayMode.collectAsState()
     val colors = DesktopTheme.colors
 
     var tab by remember { mutableStateOf(Tab.OVERVIEW) }
@@ -108,6 +110,13 @@ fun DesktopApp(controller: DesktopController) {
                 }
             }
             Spacer(Modifier.weight(1f))
+            SwitchRow(
+                title = "Away mode",
+                summary = if (awayMode) "Claude waits for your phone" else "Off: Claude works as usual",
+                checked = awayMode,
+                onChange = controller::setAwayMode,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
             PrimaryButton("Pair device", onClick = { controller.startPairing() }, modifier = Modifier.fillMaxWidth())
         }
         when (tab) {

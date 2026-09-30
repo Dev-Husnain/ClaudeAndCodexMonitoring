@@ -41,6 +41,8 @@ fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?)
         connection = connection.toUiModel(),
         computerName = computerName,
         readOnly = hasSnapshot && !canSendInput && unauthorized == null,
+        canControl = hasSnapshot && canSendInput && unauthorized == null,
+        awayMode = awayMode,
         isLoading = !hasSnapshot && !offline && unauthorized == null,
         isOffline = !hasSnapshot && offline,
         offlineMessage = UiText.Res(R.string.home_offline_message, listOf(computerText)),

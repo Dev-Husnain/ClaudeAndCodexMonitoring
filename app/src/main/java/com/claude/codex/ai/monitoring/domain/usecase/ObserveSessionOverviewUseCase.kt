@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /**
- * Builds the home overview: sessions waiting for input are pinned in "Needs you"; every other
+ * Builds the home overview: sessions waiting for input (or held by Away mode for an answer) are
+ * pinned in "Needs you"; every other
  * session is grouped under its project. Projects with the most recent activity come first, and
  * sessions within a project are newest first.
  */
@@ -25,7 +26,7 @@ class ObserveSessionOverviewUseCase(
         val projectsById = projects.associateBy { it.projectId }
         val (needsYou, others) = sessions
             .sortedByDescending { it.lastEventAtMs }
-            .partition { it.status == SessionStatus.WAITING_INPUT }
+            .partition { it.status == SessionStatus.WAITING_INPUT || it.awaiting != null }
         val grouped = others
             .groupBy { it.projectId }
             .map { (projectId, sessions) ->
@@ -44,6 +45,7 @@ class ObserveSessionOverviewUseCase(
             hasSnapshot = hasSnapshot,
             lastConnectedAtMs = lastConnectedAtMs,
             canSendInput = canSendInput,
+            awayMode = awayMode,
         )
     }
 }

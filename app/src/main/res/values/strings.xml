@@ -114,6 +114,33 @@
     <string name="home_unauthorized_mismatch_title">Computer identity changed</string>
     <string name="home_unauthorized_mismatch_message">Whoever answered could not prove it is %1$s, so AgentMon stopped connecting. If you reinstalled AgentMon on the computer, pair again.</string>
 
+    <!-- Remote control (Away mode) -->
+    <string name="away_mode_title">Away mode</string>
+    <string name="away_mode_on">Claude waits for you at permission prompts and when it finishes a turn</string>
+    <string name="away_mode_off">Off: Claude works as usual at your computer</string>
+    <string name="away_mode_failed">Could not change Away mode. Check the connection and try again.</string>
+    <string name="detail_awaiting_permission_title">Claude wants to use</string>
+    <string name="detail_awaiting_reply_title">Claude finished. Send the next step, or let it stop.</string>
+    <string name="action_approve">Approve</string>
+    <string name="action_deny">Deny</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_let_it_stop">Let it stop</string>
+    <string name="composer_hint">Message Claude…</string>
+    <string name="composer_send">Send</string>
+    <string name="delivery_sending">Sending…</string>
+    <string name="delivery_delivered">Delivered to Claude</string>
+    <string name="delivery_queued">Queued: Claude gets it when it finishes this turn</string>
+    <string name="delivery_not_connected">Not connected to your computer</string>
+    <string name="delivery_read_only">This phone is read-only</string>
+    <string name="delivery_not_waiting">Claude is not waiting for you right now</string>
+    <string name="delivery_gone">This session is no longer on your computer</string>
+    <string name="delivery_timeout">No answer from your computer. Try again.</string>
+    <string name="delivery_rejected">Your computer refused this</string>
+    <string name="detail_control_hooks">Away mode control</string>
+    <string name="detail_read_only_note">This phone is read-only. Allow input for it on your computer under Devices.</string>
+    <string name="detail_away_hint">Turn on Away mode so Claude waits for your answers here.</string>
+
     <!-- Session detail -->
     <string name="detail_section_activity">Activity</string>
     <string name="detail_started">Started %1$s</string>

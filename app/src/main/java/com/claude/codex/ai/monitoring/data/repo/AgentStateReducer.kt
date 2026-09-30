@@ -28,6 +28,7 @@ object AgentStateReducer {
                 hasSnapshot = true,
                 lastConnectedAtMs = nowMs,
                 canSendInput = message.canSendInput,
+                awayMode = message.awayMode,
             )
         }
 
@@ -68,6 +69,8 @@ object AgentStateReducer {
                 timelines = state.timelines + (message.sessionId to merge(existing, message.events.map { it.toModel() })),
             )
         }
+
+        is Message.AwayModeUpdate -> state.copy(awayMode = message.enabled)
 
         Message.Pong -> state.copy(lastConnectedAtMs = nowMs)
 

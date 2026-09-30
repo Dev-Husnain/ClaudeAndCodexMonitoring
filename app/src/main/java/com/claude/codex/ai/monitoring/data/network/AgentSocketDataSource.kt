@@ -17,11 +17,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import java.util.UUID
 
 class HeartbeatTimeoutException : IOException("No frame from the desktop agent within the heartbeat window")
 
 /** The desktop could not prove it holds the pinned key: possibly an impersonator (spec 6.3 step 2). */
 class DesktopIdentityException : IOException("Desktop signature did not verify against the pinned key")
+
+/** A message to send, with the envelope id the desktop echoes back in `ack`. */
+data class OutgoingMessage(val message: Message, val id: String = UUID.randomUUID().toString())
 
 /** One WebSocket connection to the desktop agent. */
 class AgentSocketDataSource(
@@ -38,7 +42,7 @@ class AgentSocketDataSource(
         url: String,
         hello: Message.Hello,
         authenticate: suspend (Message.Challenge) -> Message.Auth,
-        outgoing: ReceiveChannel<Message>,
+        outgoing: ReceiveChannel<OutgoingMessage>,
     ): Flow<Message> = channelFlow {
         client.webSocket(urlString = url) {
             send(Frame.Text(codec.encode(hello)))
@@ -52,7 +56,7 @@ class AgentSocketDataSource(
             }
             coroutineScope {
                 val writer = launch {
-                    for (message in outgoing) send(Frame.Text(codec.encode(message)))
+                    for (out in outgoing) send(Frame.Text(codec.encode(out.message, id = out.id)))
                 }
                 val heartbeat = launch {
                     while (isActive) {

@@ -22,6 +22,7 @@ class ProtocolCodecTest {
         lastEventAt = 2L,
         lastMessageSnippet = "Allow edit?",
         lastTool = "Edit",
+        awaiting = AwaitingDto(AwaitingKind.PERMISSION, "Bash: ./gradlew test", 5L),
     )
     private val event = TimelineEventDto("e1", "s1", 3L, EventKind.TOOL_USE, "Edit", "app/Main.kt")
 
@@ -35,6 +36,8 @@ class ProtocolCodecTest {
         Message.SendInput("s1", "continue please"),
         Message.QuickActionRequest("s1", QuickAction.APPROVE),
         Message.TerminalAttach("s1"),
+        Message.SetAwayMode(true),
+        Message.AwayModeUpdate(false),
         Message.TerminalDetach,
         Message.Ping,
         Message.Challenge("nonce", "dsig"),

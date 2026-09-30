@@ -10,4 +10,5 @@ data class SessionModel(
     val lastMessageSnippet: String?,
     val lastTool: String?,
     val errorInfo: String?,
+    val awaiting: AwaitingModel? = null,
 )

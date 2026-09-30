@@ -28,7 +28,7 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(observeSessionOverview(), pairingRepository.pairing, clock.ticks()) { overview, pairing, now ->
                 overview.toHomeUiState(now, pairing?.computerName)
-            }.collect { state -> _homeUiState.update { state } }
+            }.collect { state -> _homeUiState.update { state.copy(awayBusy = it.awayBusy) } }
         }
     }
 
@@ -36,6 +36,14 @@ class HomeViewModel(
         when (event) {
             HomeEvent.OnRetryClick -> agentRepository.reconnectNow()
             HomeEvent.OnPairAgainClick -> viewModelScope.launch { pairingRepository.unpair() }
+            is HomeEvent.OnAwayModeToggle -> {
+                _homeUiState.update { it.copy(awayBusy = true) }
+                viewModelScope.launch {
+                    agentRepository.setAwayMode(event.enabled)
+                    // The switch follows the computer's `away.update`, so a failure simply leaves it unchanged.
+                    _homeUiState.update { it.copy(awayBusy = false) }
+                }
+            }
         }
     }
 }

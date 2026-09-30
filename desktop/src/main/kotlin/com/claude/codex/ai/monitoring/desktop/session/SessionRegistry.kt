@@ -47,11 +47,44 @@ class SessionRegistry(
 
     fun session(sessionId: String): SessionDto? = _state.value.sessions.firstOrNull { it.sessionId == sessionId }
 
+    /**
+     * Atomically changes one session (if it exists) and publishes the result. State changes and their
+     * broadcasts happen under one lock, so phones receive updates in the same order the state changed.
+     */
+    fun updateSession(sessionId: String, transform: (SessionDto) -> SessionDto) {
+        mutateSession(sessionId) { current -> current?.let(transform) }
+    }
+
+    /**
+     * Reads, changes and publishes one session as one step. [transform] gets the current session (or
+     * null) and returns the new one, or null to leave it untouched.
+     */
+    fun mutateSession(sessionId: String, transform: (SessionDto?) -> SessionDto?): SessionDto? = synchronized(lock) {
+        val current = session(sessionId)
+        val next = transform(current)?.trimmed() ?: return@synchronized null
+        _state.update { state ->
+            if (current != null) {
+                state.copy(sessions = state.sessions.map { if (it.sessionId == sessionId) next else it })
+            } else {
+                state.copy(sessions = state.sessions + next)
+            }
+        }
+        _updates.tryEmit(Message.SessionUpdate(next))
+        next
+    }
+
+    /** Publishes a message that is not about one session (e.g. Away mode changed). */
+    fun broadcast(message: Message) {
+        _updates.tryEmit(message)
+    }
+
     fun removeSession(sessionId: String) {
-        val removed = session(sessionId) ?: return
-        _state.update { state -> state.copy(sessions = state.sessions.filterNot { it.sessionId == sessionId }) }
-        synchronized(lock) { timelines.remove(sessionId) }
-        _updates.tryEmit(Message.SessionRemoved(sessionId, removed.projectId))
+        synchronized(lock) {
+            val removed = session(sessionId) ?: return
+            _state.update { state -> state.copy(sessions = state.sessions.filterNot { it.sessionId == sessionId }) }
+            timelines.remove(sessionId)
+            _updates.tryEmit(Message.SessionRemoved(sessionId, removed.projectId))
+        }
     }
 
     /** Removes a project and all of its sessions. */
@@ -71,19 +104,13 @@ class SessionRegistry(
     }
 
     fun upsertSession(session: SessionDto) {
-        val trimmed = session.copy(
-            lastMessageSnippet = session.lastMessageSnippet?.take(ProtocolConstants.MAX_TEXT_CHARS),
-            errorInfo = session.errorInfo?.take(ProtocolConstants.MAX_TEXT_CHARS),
-        )
-        _state.update { state ->
-            if (state.sessions.any { it.sessionId == trimmed.sessionId }) {
-                state.copy(sessions = state.sessions.map { if (it.sessionId == trimmed.sessionId) trimmed else it })
-            } else {
-                state.copy(sessions = state.sessions + trimmed)
-            }
-        }
-        _updates.tryEmit(Message.SessionUpdate(trimmed))
+        mutateSession(session.sessionId) { session }
     }
+
+    private fun SessionDto.trimmed() = copy(
+        lastMessageSnippet = lastMessageSnippet?.take(ProtocolConstants.MAX_TEXT_CHARS),
+        errorInfo = errorInfo?.take(ProtocolConstants.MAX_TEXT_CHARS),
+    )
 
     fun addEvent(event: TimelineEventDto) {
         val trimmed = event.copy(detail = event.detail?.take(ProtocolConstants.MAX_TEXT_CHARS))
@@ -91,8 +118,8 @@ class SessionRegistry(
             val timeline = timelines.getOrPut(trimmed.sessionId) { ArrayDeque() }
             timeline.addLast(trimmed)
             while (timeline.size > timelineCapacity) timeline.removeFirst()
+            _updates.tryEmit(Message.SessionEvent(trimmed.sessionId, trimmed))
         }
-        _updates.tryEmit(Message.SessionEvent(trimmed.sessionId, trimmed))
     }
 
     /** Up to [limit] events older than [beforeTs] (or the newest ones), oldest first. */

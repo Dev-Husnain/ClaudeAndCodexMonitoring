@@ -11,6 +11,10 @@ data class HomeUiState(
     val connection: ConnectionUiModel = ConnectionUiModel.Initial,
     val computerName: String? = null,
     val readOnly: Boolean = false,
+    /** This phone may send input, so it can switch Away mode. */
+    val canControl: Boolean = false,
+    val awayMode: Boolean = false,
+    val awayBusy: Boolean = false,
     /** No snapshot yet and still trying: show skeletons. */
     val isLoading: Boolean = true,
     /** No snapshot and the computer is unreachable: show the full offline state. */

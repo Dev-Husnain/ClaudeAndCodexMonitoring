@@ -40,6 +40,11 @@ sealed interface Message {
     @SerialName("quick_action")
     data class QuickActionRequest(val sessionId: String, val action: QuickAction) : Message
 
+    /** Turn Away mode on or off. Needs input permission; answered with `ack`. */
+    @Serializable
+    @SerialName("away.set")
+    data class SetAwayMode(val enabled: Boolean) : Message
+
     @Serializable
     @SerialName("terminal.attach")
     data class TerminalAttach(val sessionId: String) : Message
@@ -66,7 +71,13 @@ sealed interface Message {
         val sessions: List<SessionDto>,
         /** False for read-only devices (spec 6.2 grant); the phone hides input controls. */
         val canSendInput: Boolean = false,
+        val awayMode: Boolean = false,
     ) : Message
+
+    /** Away mode changed (from the desktop or any phone). */
+    @Serializable
+    @SerialName("away.update")
+    data class AwayModeUpdate(val enabled: Boolean) : Message
 
     @Serializable
     @SerialName("session.update")

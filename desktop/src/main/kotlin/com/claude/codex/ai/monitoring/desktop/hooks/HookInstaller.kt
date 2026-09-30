@@ -51,7 +51,7 @@ class HookInstaller(
             hooks.forEach { (event, groups) -> if (event !in EVENTS) put(event, groups) }
             EVENTS.forEach { event ->
                 val kept = (hooks[event] as? JsonArray)?.filterNot { it.isOurs() }.orEmpty()
-                put(event, JsonArray(kept + ourGroup()))
+                put(event, JsonArray(kept + ourGroup(if (event in HOLDABLE_EVENTS) HOLD_TIMEOUT_S else TIMEOUT_S)))
             }
         }
         write(file, JsonObject(root + ("hooks" to merged)))
@@ -76,7 +76,7 @@ class HookInstaller(
         write(file, JsonObject(if (cleaned.isEmpty()) root - "hooks" else root + ("hooks" to JsonObject(cleaned))))
     }
 
-    private fun ourGroup() = buildJsonObject {
+    private fun ourGroup(timeoutSeconds: Int) = buildJsonObject {
         put(
             "hooks",
             buildJsonArray {
@@ -84,8 +84,9 @@ class HookInstaller(
                     buildJsonObject {
                         put("type", "http")
                         put("url", hookUrl)
-                        // Short: a hook must never hold Claude up; if the agent is not running, Claude just continues.
-                        put("timeout", TIMEOUT_S)
+                        // Short, so a hook never holds Claude up. The two events Away mode may hold get a long
+                        // timeout; the agent answers them at once unless Away mode is on.
+                        put("timeout", timeoutSeconds)
                         put("headers", buildJsonObject { put(SECRET_HEADER, secret) })
                     },
                 )
@@ -128,6 +129,10 @@ class HookInstaller(
     companion object {
         const val SECRET_HEADER = "X-Agentmon-Secret"
         private const val TIMEOUT_S = 5
+        private const val HOLD_TIMEOUT_S = 3600
+
+        /** Events whose answer can steer Claude, so Away mode may hold them for the phone. */
+        val HOLDABLE_EVENTS = setOf("PermissionRequest", "Stop")
 
         /**
          * Events posted to the agent. SessionStart is not included: it only supports command hooks, and

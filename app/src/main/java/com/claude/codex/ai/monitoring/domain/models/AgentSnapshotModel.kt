@@ -13,4 +13,6 @@ data class AgentSnapshotModel(
     val lastConnectedAtMs: Long? = null,
     /** From the owner's grant; false means read-only. */
     val canSendInput: Boolean = false,
+    /** Claude waits for the phone at permission prompts and turn ends. */
+    val awayMode: Boolean = false,
 )

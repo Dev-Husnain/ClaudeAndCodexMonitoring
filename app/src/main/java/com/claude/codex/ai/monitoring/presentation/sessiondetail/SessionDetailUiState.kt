@@ -19,6 +19,52 @@ data class SessionDetailUiState(
     val header: SessionHeaderUiModel? = null,
     /** Newest first; null while history is loading. */
     val timeline: List<TimelineItemUiModel>? = null,
+    // Remote control (phase 5)
+    val canControl: Boolean = false,
+    val showReadOnlyNote: Boolean = false,
+    val showComposer: Boolean = false,
+    val awayMode: Boolean = false,
+    val awayBusy: Boolean = false,
+    val awaiting: AwaitingUiModel? = null,
+    val composerText: String = "",
+    val sending: Boolean = false,
+    val deliveryNote: UiText? = null,
+    val deliveryTone: StatusTone = StatusTone.STALE,
+) {
+    /** Copies the fields the screen owns locally (typing, sending) onto a fresh server-derived state. */
+    fun withLocalFrom(previous: SessionDetailUiState) = copy(
+        awayBusy = previous.awayBusy,
+        composerText = previous.composerText,
+        sending = previous.sending,
+        deliveryNote = previous.deliveryNote,
+        deliveryTone = previous.deliveryTone,
+    )
+}
+
+/** Everything the control widgets need, bundled so the list takes one parameter. */
+@Immutable
+data class SessionControlsUiModel(
+    val canControl: Boolean,
+    val showReadOnlyNote: Boolean,
+    val awayMode: Boolean,
+    val awayBusy: Boolean,
+    val awaiting: AwaitingUiModel?,
+    val busy: Boolean,
+)
+
+fun SessionDetailUiState.controls() = SessionControlsUiModel(
+    canControl = canControl,
+    showReadOnlyNote = showReadOnlyNote,
+    awayMode = awayMode,
+    awayBusy = awayBusy,
+    awaiting = awaiting,
+    busy = sending,
+)
+
+@Immutable
+data class AwaitingUiModel(
+    val isPermission: Boolean,
+    val detail: String?,
 )
 
 @Immutable

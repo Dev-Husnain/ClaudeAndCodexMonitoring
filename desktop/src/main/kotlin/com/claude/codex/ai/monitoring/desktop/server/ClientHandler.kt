@@ -1,5 +1,6 @@
 package com.claude.codex.ai.monitoring.desktop.server
 
+import com.claude.codex.ai.monitoring.desktop.control.ControlCenter
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.devices.DeviceStore
@@ -9,6 +10,7 @@ import com.claude.codex.ai.monitoring.desktop.security.RateLimiter
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.protocol.AgentCrypto
 import com.claude.codex.ai.monitoring.protocol.AuthPayloads
+import com.claude.codex.ai.monitoring.protocol.DeliveryResult
 import com.claude.codex.ai.monitoring.protocol.ErrorCode
 import com.claude.codex.ai.monitoring.protocol.Frame as ProtocolFrame
 import com.claude.codex.ai.monitoring.protocol.Message
@@ -38,6 +40,7 @@ class ClientHandler(
     private val identity: DesktopIdentity,
     private val audit: AuditLog,
     private val rateLimiter: RateLimiter,
+    private val control: ControlCenter? = null,
     private val helloTimeoutMs: Long = HELLO_TIMEOUT_MS,
     private val authTimeoutMs: Long = AUTH_TIMEOUT_MS,
 ) {
@@ -93,7 +96,8 @@ class ClientHandler(
         val forwarder = launch {
             registry.updates.collect { update ->
                 val projectId = update.projectIdOrNull()
-                if (visible(projectId)) send(Frame.Text(codec.encode(update, projectId = projectId)))
+                // Away mode is global; everything else is scoped to a project this device may see.
+                if (update is Message.AwayModeUpdate || visible(projectId)) send(Frame.Text(codec.encode(update, projectId = projectId)))
             }
         }
         while (true) {
@@ -115,18 +119,40 @@ class ClientHandler(
                         else -> registry.history(message.sessionId, message.beforeTs)
                     }
                 }
-                is Message.SendInput, is Message.QuickActionRequest, is Message.TerminalAttach, Message.TerminalDetach ->
+                is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode ->
                     if (!grant.canSendInput) {
                         Message.Error(ErrorCode.READ_ONLY, "This device is read-only", frame.id)
                     } else {
-                        // Delivering input arrives in phase 5 (wrapper sessions).
-                        Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "Input is not available yet", frame.id)
+                        control(message, frame.id, device)
                     }
+                is Message.TerminalAttach, Message.TerminalDetach ->
+                    Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "No terminal for this session", frame.id)
                 else -> Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", frame.id)
             }
             reply?.let { send(Frame.Text(codec.encode(it))) }
         }
         forwarder.cancel()
+    }
+
+    private fun control(message: Message, ackId: String, device: PairedDevice): Message {
+        val center = control ?: return Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "Control is not available", ackId)
+        if (message is Message.SetAwayMode) {
+            center.setAwayMode(message.enabled, by = device.name)
+            return Message.Ack(ackId, DeliveryResult.DELIVERED)
+        }
+        val sessionId = when (message) {
+            is Message.SendInput -> message.sessionId
+            is Message.QuickActionRequest -> message.sessionId
+            else -> return Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", ackId)
+        }
+        val projectId = registry.projectOf(sessionId) ?: return Message.Error(ErrorCode.SESSION_NOT_FOUND, "Unknown session", ackId)
+        if (!device.grant.allows(projectId)) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)
+        val delivery = when (message) {
+            is Message.SendInput -> center.deliverText(sessionId, message.text)
+            is Message.QuickActionRequest -> center.quickAction(sessionId, message.action)
+            else -> return Message.Error(ErrorCode.BAD_REQUEST, "Unexpected message", ackId)
+        }
+        return Message.Ack(ackId, delivery.result, delivery.detail)
     }
 
     private fun readyFor(device: PairedDevice): Message.Ready {
@@ -135,6 +161,7 @@ class ClientHandler(
             projects = all.projects.filter { device.grant.allows(it.projectId) },
             sessions = all.sessions.filter { device.grant.allows(it.projectId) },
             canSendInput = device.grant.canSendInput,
+            awayMode = control?.awayMode?.value ?: false,
         )
     }
 

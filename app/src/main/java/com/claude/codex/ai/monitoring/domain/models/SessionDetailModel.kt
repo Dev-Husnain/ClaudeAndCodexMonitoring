@@ -8,4 +8,6 @@ data class SessionDetailModel(
     val projectName: String?,
     /** Null while history has not been loaded yet. */
     val timeline: List<TimelineEventModel>?,
+    val canSendInput: Boolean = false,
+    val awayMode: Boolean = false,
 )

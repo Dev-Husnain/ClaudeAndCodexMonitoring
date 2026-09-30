@@ -36,6 +36,8 @@ class ObserveSessionDetailUseCase(
                         snapshot.projects.firstOrNull { it.projectId == s.projectId }?.name
                     },
                     timeline = snapshot.timelines[sessionId],
+                    canSendInput = snapshot.canSendInput,
+                    awayMode = snapshot.awayMode,
                 )
             }
             .distinctUntilChanged()

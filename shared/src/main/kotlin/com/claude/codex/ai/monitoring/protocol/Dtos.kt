@@ -25,6 +25,16 @@ data class SessionDto(
     val lastMessageSnippet: String? = null,
     val lastTool: String? = null,
     val errorInfo: String? = null,
+    /** Set while Away mode holds Claude for the owner's answer. */
+    val awaiting: AwaitingDto? = null,
+)
+
+@Serializable
+data class AwaitingDto(
+    val kind: AwaitingKind,
+    /** For PERMISSION: what Claude wants to do, e.g. "Bash: ./gradlew test". For REPLY: Claude's last message. */
+    val detail: String? = null,
+    val sinceMs: Long,
 )
 
 @Serializable

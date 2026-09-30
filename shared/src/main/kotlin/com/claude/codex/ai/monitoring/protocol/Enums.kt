@@ -16,6 +16,22 @@ enum class ControlMode {
 
     /** Idle session that can be continued with `claude -p --resume`. */
     HEADLESS,
+
+    /**
+     * Any session with AgentMon hooks: in Away mode the phone answers permission requests and
+     * its messages reach Claude when it finishes a turn (no wrapper needed).
+     */
+    HOOKS,
+}
+
+/** What a session is waiting for from the owner while Away mode holds it. */
+@Serializable
+enum class AwaitingKind {
+    /** A permission dialog: approve or deny. */
+    PERMISSION,
+
+    /** Claude finished its turn: send the next instruction, or let it stop. */
+    REPLY,
 }
 
 @Serializable
@@ -25,7 +41,13 @@ enum class QuickAction { APPROVE, DENY, INTERRUPT, CONTINUE }
 enum class EventKind { SESSION_START, PROMPT, TOOL_USE, TOOL_RESULT, NOTIFICATION, MESSAGE, STOP, ERROR, SESSION_END }
 
 @Serializable
-enum class DeliveryResult { DELIVERED, FAILED }
+enum class DeliveryResult {
+    DELIVERED,
+
+    /** Accepted, and handed to Claude when it next finishes a turn. */
+    QUEUED,
+    FAILED,
+}
 
 @Serializable
 enum class ErrorCode {

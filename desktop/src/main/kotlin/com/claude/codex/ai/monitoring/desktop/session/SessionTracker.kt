@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.desktop.session
 import com.claude.codex.ai.monitoring.desktop.hooks.HookEventDto
 import com.claude.codex.ai.monitoring.desktop.projects.ProjectStore
 import com.claude.codex.ai.monitoring.protocol.SessionState
+import com.claude.codex.ai.monitoring.protocol.TimelineEventDto
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,10 +34,12 @@ class SessionTracker(
         val project = projects.projectFor(hook.cwd) ?: return false
         val now = clock()
         _lastHookAt.update { it + (project.projectId to now) }
-        val current = registry.session(hook.sessionId)
-        val transition = SessionStateMachine.apply(current, hook, project.projectId, now) ?: return true
-        transition.event?.let(registry::addEvent)
-        registry.upsertSession(transition.session)
+        // Read and write in one step: a concurrent Away-mode hold must not be overwritten by a stale copy.
+        var event: TimelineEventDto? = null
+        registry.mutateSession(hook.sessionId) { current ->
+            SessionStateMachine.apply(current, hook, project.projectId, now)?.also { event = it.event }?.session
+        }
+        event?.let(registry::addEvent)
         return true
     }
 
@@ -52,7 +55,7 @@ class SessionTracker(
     fun maintain() {
         val now = clock()
         registry.state.value.sessions.forEach { session ->
-            SessionStateMachine.markStale(session, now, staleAfterMs)?.let(registry::upsertSession)
+            registry.mutateSession(session.sessionId) { current -> current?.let { SessionStateMachine.markStale(it, now, staleAfterMs) } }
             val age = now - session.lastEventAt
             val forget = when (session.state) {
                 SessionState.ENDED -> age >= forgetEndedAfterMs

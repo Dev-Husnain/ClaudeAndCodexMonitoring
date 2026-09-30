@@ -2,14 +2,25 @@ package com.claude.codex.ai.monitoring.presentation.sessiondetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.claude.codex.ai.monitoring.R
+import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.Clock
+import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.core.utils.ticks
+import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
+import com.claude.codex.ai.monitoring.domain.models.QuickActionType
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
+import com.claude.codex.ai.monitoring.domain.repo.SettingsRepository
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionDetailUseCase
+import com.claude.codex.ai.monitoring.domain.usecase.SendInstructionUseCase
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -17,22 +28,82 @@ class SessionDetailViewModel(
     private val sessionId: String,
     observeSessionDetail: ObserveSessionDetailUseCase,
     private val agentRepository: AgentRepository,
+    private val sendInstruction: SendInstructionUseCase,
+    private val settingsRepository: SettingsRepository,
     clock: Clock,
 ) : ViewModel() {
 
     private val _sessionDetailUiState = MutableStateFlow(SessionDetailUiState(subtitle = sessionId))
     val sessionDetailUiState: StateFlow<SessionDetailUiState> = _sessionDetailUiState.asStateFlow()
 
+    private val _effects = Channel<SessionDetailEffect>(Channel.BUFFERED)
+    val effects: Flow<SessionDetailEffect> = _effects.receiveAsFlow()
+
     init {
         viewModelScope.launch {
             combine(observeSessionDetail(sessionId), clock.ticks()) { detail, now -> detail.toUiState(sessionId, now) }
-                .collect { state -> _sessionDetailUiState.update { state } }
+                .collect { fresh -> _sessionDetailUiState.update { previous -> fresh.withLocalFrom(previous) } }
         }
     }
 
     fun onEvent(event: SessionDetailEvent) {
         when (event) {
             SessionDetailEvent.OnRetryClick -> agentRepository.reconnectNow()
+            is SessionDetailEvent.OnComposerChange -> _sessionDetailUiState.update {
+                it.copy(composerText = event.text, deliveryNote = if (it.sending) it.deliveryNote else null)
+            }
+            SessionDetailEvent.OnSendClick -> send()
+            is SessionDetailEvent.OnQuickAction -> quickAction(event.action)
+            is SessionDetailEvent.OnAwayModeToggle -> setAwayMode(event.enabled)
+        }
+    }
+
+    private fun send() {
+        val text = _sessionDetailUiState.value.composerText
+        if (text.isBlank() || _sessionDetailUiState.value.sending) return
+        startSending()
+        viewModelScope.launch {
+            val status = sendInstruction(sessionId, text) ?: return@launch finishSending(null, clearComposer = false)
+            finishSending(status, clearComposer = status !is DeliveryStatus.Failed)
+        }
+    }
+
+    private fun quickAction(action: QuickActionType) {
+        if (_sessionDetailUiState.value.sending) return
+        startSending()
+        viewModelScope.launch { finishSending(agentRepository.quickAction(sessionId, action), clearComposer = false) }
+    }
+
+    private fun setAwayMode(enabled: Boolean) {
+        _sessionDetailUiState.update { it.copy(awayBusy = true) }
+        viewModelScope.launch {
+            val status = agentRepository.setAwayMode(enabled)
+            _sessionDetailUiState.update {
+                it.copy(
+                    awayBusy = false,
+                    deliveryNote = if (status is DeliveryStatus.Failed) UiText.Res(R.string.away_mode_failed) else it.deliveryNote,
+                    deliveryTone = if (status is DeliveryStatus.Failed) StatusTone.ERROR else it.deliveryTone,
+                )
+            }
+        }
+    }
+
+    private fun startSending() {
+        _sessionDetailUiState.update { it.copy(sending = true, deliveryNote = UiText.Res(R.string.delivery_sending), deliveryTone = StatusTone.STALE) }
+    }
+
+    private suspend fun finishSending(status: DeliveryStatus?, clearComposer: Boolean) {
+        val note = status?.toNote()
+        _sessionDetailUiState.update {
+            it.copy(
+                sending = false,
+                composerText = if (clearComposer) "" else it.composerText,
+                deliveryNote = note?.first,
+                deliveryTone = note?.second ?: StatusTone.STALE,
+            )
+        }
+        if (status != null && settingsRepository.settings.first().hapticsEnabled) {
+            _effects.send(SessionDetailEffect.Haptic(success = status !is DeliveryStatus.Failed))
         }
     }
 }

@@ -3,13 +3,17 @@ package com.claude.codex.ai.monitoring.presentation.sessiondetail
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claude.codex.ai.monitoring.R
@@ -20,7 +24,9 @@ import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusPill
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.resolve
+import com.claude.codex.ai.monitoring.domain.models.QuickActionType
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.SessionActivityList
+import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.SessionComposer
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TimelineLoading
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -33,6 +39,16 @@ fun SessionDetailScreen(
     viewModel: SessionDetailViewModel = koinViewModel(key = sessionId) { parametersOf(sessionId) },
 ) {
     val state by viewModel.sessionDetailUiState.collectAsStateWithLifecycle()
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is SessionDetailEffect.Haptic -> haptics.performHapticFeedback(
+                    if (effect.success) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
+                )
+            }
+        }
+    }
 
     AuroraBackground(modifier = modifier.fillMaxSize()) {
         Column(
@@ -40,6 +56,7 @@ fun SessionDetailScreen(
                 .align(Alignment.TopCenter)
                 .fillMaxSize()
                 .systemBarsPadding()
+                .imePadding()
                 .widthIn(max = Dimens.ContentMaxWidth),
         ) {
             AppTopBar(
@@ -65,11 +82,31 @@ fun SessionDetailScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                else -> SessionActivityList(
-                    header = header,
-                    timeline = state.timeline,
-                    isOffline = state.isOffline,
-                )
+                else -> {
+                    SessionActivityList(
+                        header = header,
+                        timeline = state.timeline,
+                        isOffline = state.isOffline,
+                        controls = state.controls(),
+                        onApprove = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.APPROVE)) },
+                        onDeny = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.DENY)) },
+                        onStop = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.INTERRUPT)) },
+                        onContinue = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.CONTINUE)) },
+                        onAwayModeToggle = { viewModel.onEvent(SessionDetailEvent.OnAwayModeToggle(it)) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (state.showComposer) {
+                        SessionComposer(
+                            text = state.composerText,
+                            onTextChange = { viewModel.onEvent(SessionDetailEvent.OnComposerChange(it)) },
+                            onSend = { viewModel.onEvent(SessionDetailEvent.OnSendClick) },
+                            sending = state.sending,
+                            note = state.deliveryNote?.resolve()
+                                ?: if (!state.awayMode && state.awaiting == null) stringResource(R.string.detail_away_hint) else null,
+                            noteTone = state.deliveryTone,
+                        )
+                    }
+                }
             }
         }
     }

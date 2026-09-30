@@ -54,8 +54,14 @@ fun SessionStatusHeader(
                     style = MaterialTheme.typography.bodySmall,
                     color = AppTheme.colors.textSecondary,
                 )
+                // Below the status, not beside it: a long control label must never squeeze the status.
+                StatusPill(
+                    tone = header.controlTone,
+                    label = header.controlLabel.resolve(),
+                    animateOrb = false,
+                    modifier = Modifier.padding(top = Dimens.SpaceSm),
+                )
             }
-            StatusPill(tone = header.controlTone, label = header.controlLabel.resolve(), animateOrb = false)
         }
         if (header.message != null) {
             Text(

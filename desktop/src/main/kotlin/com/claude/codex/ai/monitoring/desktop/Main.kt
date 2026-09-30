@@ -10,6 +10,7 @@ import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.claude.codex.ai.monitoring.desktop.control.ControlCenter
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.devices.DeviceStore
@@ -42,6 +43,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.net.InetAddress
+import java.nio.file.Path
 
 private const val VERSION = "1.0.0"
 
@@ -71,13 +73,16 @@ fun main(args: Array<String>) {
     val projects = ProjectStore(database)
     projects.projects.value.forEach { registry.upsertProject(ProjectDto(it.projectId, it.name)) }
     val tracker = SessionTracker(registry, projects)
+    val control = ControlCenter(registry, audit)
     val installer = HookInstaller(HookInstaller.loadOrCreateSecret(dataDir.resolve("hook-secret")))
-    val hookReceiver = HookReceiver(installer.secret, tracker, audit)
-    val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter())
+    // Keep every monitored project's hooks current (new events or timeouts after an update).
+    projects.projects.value.forEach { runCatching { installer.install(Path.of(it.path)) } }
+    val hookReceiver = HookReceiver(installer.secret, tracker, audit, control)
+    val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter(), control)
     val server = AgentServer(handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val controller = DesktopController(
-        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, scope,
+        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope,
     )
 
     server.start()

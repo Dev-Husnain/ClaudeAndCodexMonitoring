@@ -35,3 +35,5 @@ adb reverse tcp:8787 tcp:8787                # lets the phone reach the laptop a
 - ViewModels run an endless relative-time ticker. In tests, give `Dispatchers.Main` its own `StandardTestDispatcher` and call `scheduler.runCurrent()`, because `runTest` draining it would hang (see `HomeViewModelTest`).
 - R8 keep rules live in `app/src/main/keepRules/` (AGP 9), not in `proguard-rules.pro`.
 - The Bash tool can fail on apostrophes inside heredocs; write source files with the Write tool.
+- Stopping `./gradlew :desktop:run` can leave the agent's JVM running on port 8787, and a new run then fails or
+  the phone keeps talking to old code. Check with `netstat -ano | grep ":8787 .*LISTEN"` and kill that PID.

@@ -14,6 +14,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.Dimens
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
+import com.claude.codex.ai.monitoring.core.ui.AwayModeToggle
+import androidx.compose.foundation.layout.padding
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.resolve
@@ -45,6 +47,14 @@ fun HomeScreen(
                 readOnly = state.readOnly,
                 onSettingsClick = onSettingsClick,
             )
+            if (state.canControl) {
+                AwayModeToggle(
+                    enabled = state.awayMode,
+                    busy = state.awayBusy,
+                    onToggle = { viewModel.onEvent(HomeEvent.OnAwayModeToggle(it)) },
+                    modifier = Modifier.padding(start = Dimens.ScreenPadding, end = Dimens.ScreenPadding, bottom = Dimens.SpaceMd),
+                )
+            }
             val unauthorized = state.unauthorized
             when {
                 unauthorized != null -> StateMessage(

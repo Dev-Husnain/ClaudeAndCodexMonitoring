@@ -20,6 +20,8 @@ val presentationModule = module {
             sessionId = params.get(),
             observeSessionDetail = get(),
             agentRepository = get(),
+            sendInstruction = get(),
+            settingsRepository = get(),
             clock = get(),
         )
     }

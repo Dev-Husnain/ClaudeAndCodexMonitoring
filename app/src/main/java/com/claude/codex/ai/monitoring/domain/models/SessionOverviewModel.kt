@@ -10,4 +10,5 @@ data class SessionOverviewModel(
     val hasSnapshot: Boolean,
     val lastConnectedAtMs: Long?,
     val canSendInput: Boolean,
+    val awayMode: Boolean,
 )
