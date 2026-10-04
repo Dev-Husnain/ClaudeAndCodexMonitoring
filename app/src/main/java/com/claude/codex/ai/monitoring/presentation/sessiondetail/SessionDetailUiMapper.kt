@@ -18,6 +18,7 @@ import com.claude.codex.ai.monitoring.presentation.common.toTone
 import com.claude.codex.ai.monitoring.presentation.common.toUiModel
 
 private const val SHORT_ID_LENGTH = 8
+private val STOPPABLE = setOf(SessionStatus.RUNNING, SessionStatus.WAITING_INPUT, SessionStatus.STALE)
 
 fun SessionDetailModel.toUiState(sessionId: String, nowMs: Long): SessionDetailUiState {
     val offline = connection is ConnectionStatus.Offline
@@ -36,7 +37,16 @@ fun SessionDetailModel.toUiState(sessionId: String, nowMs: Long): SessionDetailU
         awayMode = awayMode,
         awaiting = session?.awaiting?.let { AwaitingUiModel(isPermission = it.kind == AwaitingKind.PERMISSION, detail = it.detail) },
         hasTerminal = session?.control == SessionControl.WRAPPER && session.status != SessionStatus.ENDED,
+        // A held prompt has its own Stop / Let it stop on the awaiting card.
+        canStop = canSendInput && session != null && session.awaiting == null && session.status in STOPPABLE,
     )
+}
+
+/** The note for the answer to Stop: it may take effect at Claude's next step rather than at once. */
+fun DeliveryStatus.toStopNote(): Pair<UiText, StatusTone> = when (this) {
+    DeliveryStatus.Delivered -> UiText.Res(R.string.delivery_stop_sent) to StatusTone.DONE
+    DeliveryStatus.Queued -> UiText.Res(R.string.delivery_stop_queued) to StatusTone.WAITING
+    is DeliveryStatus.Failed -> toNote()
 }
 
 /** The note under the composer, and its colour, for a delivery result. */

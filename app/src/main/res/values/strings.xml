@@ -217,4 +217,12 @@
     <string name="key_1_description">Press 1</string>
     <string name="key_2_description">Press 2</string>
     <string name="key_3_description">Press 3</string>
+
+    <!-- Stop -->
+    <string name="detail_stop">Stop Claude</string>
+    <string name="detail_stop_confirm_title">Stop Claude?</string>
+    <string name="detail_stop_confirm_message">Claude stops what it is doing. Work done so far is kept, and you can send a new instruction afterwards.</string>
+    <string name="detail_stop_confirm">Stop</string>
+    <string name="delivery_stop_sent">Stop sent to Claude</string>
+    <string name="delivery_stop_queued">Claude stops at its next step</string>
 </resources>

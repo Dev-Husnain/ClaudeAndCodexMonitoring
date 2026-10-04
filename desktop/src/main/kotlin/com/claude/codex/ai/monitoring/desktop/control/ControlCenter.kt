@@ -58,6 +58,9 @@ class ControlCenter(
     private val heldStops = HashMap<String, CompletableDeferred<String?>>()
     private val queued = HashMap<String, String>()
 
+    /** Stop requests from the phone for hook-only sessions, by session, with the time they were made. */
+    private val stopRequests = HashMap<String, Long>()
+
     /** Types into sessions started with `agentmon claude` (phase 5b). */
     @Volatile
     var wrapper: WrapperInput? = null
@@ -95,7 +98,29 @@ class ControlCenter(
             heldPermissions.remove(sessionId)?.complete(null)
             heldStops.remove(sessionId)?.complete(null)
             queued.remove(sessionId)
+            stopRequests.remove(sessionId)
         }
+    }
+
+    /**
+     * Called first for every hook. When the phone asked to stop this session, answers the hook with
+     * `{"continue": false}`, which stops Claude entirely (for tool hooks even mid-response). A turn that
+     * ends by itself (Stop, StopFailure, SessionEnd) clears the request, so it never hits the next turn.
+     * Returns the JSON reply, or null when the hook should be handled as usual.
+     */
+    fun takeStopRequest(sessionId: String, eventName: String): String? {
+        val requestedAt = synchronized(this) {
+            val at = stopRequests.remove(sessionId) ?: return null
+            if (eventName == "Stop") queued.remove(sessionId) // A stop wins over a queued instruction.
+            at
+        }
+        if (eventName == "StopFailure" || eventName == "SessionEnd" || clock() - requestedAt > STOP_REQUEST_TTL_MS) return null
+        registry.mutateSession(sessionId) { current -> current?.copy(state = SessionState.IDLE, awaiting = null, lastEventAt = clock()) }
+        registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.STOP, "Stopped from your phone", null))
+        return buildJsonObject {
+            put("continue", false)
+            put("stopReason", STOP_REASON)
+        }.toString()
     }
 
     /** An instruction typed on the phone. */
@@ -159,7 +184,17 @@ class ControlCenter(
             }
         }
         wrapperQuickAction(sessionId, action)?.let { return it }
+        if (action == QuickAction.INTERRUPT) return requestStop(sessionId)
         return Delivery(DeliveryResult.FAILED, "Claude is not waiting for you right now")
+    }
+
+    /** Stop for a session without a terminal: applied by the next hook (see [takeStopRequest]). */
+    private fun requestStop(sessionId: String): Delivery {
+        val session = registry.session(sessionId) ?: return Delivery(DeliveryResult.FAILED, "Session not found")
+        if (session.state !in STOPPABLE) return Delivery(DeliveryResult.FAILED, "Claude is not working right now")
+        synchronized(this) { stopRequests[sessionId] = clock() }
+        registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.NOTIFICATION, "Stop requested from your phone", null))
+        return Delivery(DeliveryResult.QUEUED, "Claude stops at its next step")
     }
 
     /** A key pressed on the phone's terminal keys row (wrapper sessions only). */
@@ -184,6 +219,12 @@ class ControlCenter(
             }
         }
         if (!sent) return Delivery(DeliveryResult.FAILED, "The terminal did not accept the key")
+        if (action == QuickAction.INTERRUPT) {
+            // Esc ends the turn without any hook (Stop does not fire on an interrupt), so record it here.
+            registry.mutateSession(sessionId) { current ->
+                current?.takeIf { it.state in STOPPABLE }?.copy(state = SessionState.IDLE, lastEventAt = clock())
+            }
+        }
         val title = when (action) {
             QuickAction.APPROVE -> "Approved from your phone"
             QuickAction.DENY -> "Denied from your phone"
@@ -249,5 +290,8 @@ class ControlCenter(
     private companion object {
         const val MAX_INSTRUCTION = 4_000
         const val CONTINUE_TEXT = "Continue."
+        const val STOP_REASON = "Stopped from the phone (AgentMon)."
+        const val STOP_REQUEST_TTL_MS = 30 * 60_000L
+        val STOPPABLE = setOf(SessionState.RUNNING, SessionState.WAITING_INPUT, SessionState.STALE)
     }
 }

@@ -124,6 +124,22 @@ with an `ack` carrying the request's envelope id.
 - Registry changes and their `session.update` broadcasts happen under one lock, so phones always end on
   the current state.
 
+## Stop from the phone
+
+`quick_action INTERRUPT` stops Claude in every situation:
+
+| Situation | What the agent does | `ack` |
+|---|---|---|
+| A permission request is held (Away mode) | answers it `deny` with `interrupt: true` | DELIVERED |
+| Claude finished and is held (Away mode) | lets it stop | DELIVERED |
+| Wrapper session | presses Esc in the terminal (interrupts at once) and marks the session idle, since an interrupt fires no hook | DELIVERED |
+| Any other running hooked session | remembers the request and answers the session's **next hook** with `{"continue": false, "stopReason": "Stopped from the phone (AgentMon)."}`, which stops Claude entirely (tool hooks even mid-response) | QUEUED, "Claude stops at its next step" |
+| Session idle or ended | nothing | FAILED |
+
+A request is dropped when the turn ends by itself (Stop, StopFailure, SessionEnd) or after 30 minutes, so it can
+never stop a later turn. The phone shows **Stop Claude** (with a confirmation) while a session is running or
+waiting and this phone may send input.
+
 ## Wrapper and terminal mirror (phase 5b)
 
 `agentmon claude [args]` (the `:cli` module) runs Claude Code in a pseudo-terminal (ConPTY on Windows),

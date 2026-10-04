@@ -20,6 +20,7 @@ import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.Dimens
 import com.claude.codex.ai.monitoring.core.ui.AppTopBar
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
+import com.claude.codex.ai.monitoring.core.ui.ConfirmDialog
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusPill
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
@@ -30,6 +31,7 @@ import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.Sess
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TerminalKeysRow
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TerminalView
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.SessionComposer
+import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.StopClaudeButton
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.components.TimelineLoading
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -52,6 +54,18 @@ fun SessionDetailScreen(
                 )
             }
         }
+    }
+
+    if (state.showStopConfirm) {
+        ConfirmDialog(
+            title = stringResource(R.string.detail_stop_confirm_title),
+            message = stringResource(R.string.detail_stop_confirm_message),
+            confirmLabel = stringResource(R.string.detail_stop_confirm),
+            dismissLabel = stringResource(R.string.action_cancel),
+            onConfirm = { viewModel.onEvent(SessionDetailEvent.OnStopConfirm) },
+            onDismiss = { viewModel.onEvent(SessionDetailEvent.OnStopDismiss) },
+            destructive = true,
+        )
     }
 
     AuroraBackground(modifier = modifier.fillMaxSize()) {
@@ -121,6 +135,13 @@ fun SessionDetailScreen(
                             onContinue = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.CONTINUE)) },
                             onAwayModeToggle = { viewModel.onEvent(SessionDetailEvent.OnAwayModeToggle(it)) },
                             modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (state.canStop) {
+                        StopClaudeButton(
+                            onClick = { viewModel.onEvent(SessionDetailEvent.OnStopClick) },
+                            enabled = !state.sending && !state.isOffline,
+                            modifier = Modifier.padding(start = Dimens.ScreenPadding, end = Dimens.ScreenPadding, top = Dimens.SpaceMd),
                         )
                     }
                     if (state.showComposer) {

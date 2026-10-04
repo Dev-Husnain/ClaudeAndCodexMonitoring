@@ -15,6 +15,7 @@ import com.claude.codex.ai.monitoring.protocol.DeliveryResult
 import com.claude.codex.ai.monitoring.protocol.ErrorCode
 import com.claude.codex.ai.monitoring.protocol.Message
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
+import com.claude.codex.ai.monitoring.protocol.QuickAction
 import com.claude.codex.ai.monitoring.protocol.SessionState
 import com.claude.codex.ai.monitoring.protocol.TerminalKey
 import com.claude.codex.ai.monitoring.protocol.WrapperMessage
@@ -111,6 +112,11 @@ class WrapperLinkTest {
             assertEquals("\r", nextInput(), "Enter is sent as its own keystroke")
             assertEquals(DeliveryResult.DELIVERED, control.pressKey("wrapper-0001", TerminalKey.SHIFT_TAB).result)
             assertEquals("\u001B[Z", nextInput())
+
+            // Stop from the phone: Esc in the terminal, and the session is no longer shown as running.
+            assertEquals(DeliveryResult.DELIVERED, control.quickAction("wrapper-0001", QuickAction.INTERRUPT).result)
+            assertEquals("\u001B", nextInput())
+            assertEquals(SessionState.IDLE, agent.registry.session("wrapper-0001")?.state)
 
             send(Frame.Text(WrapperMessage.encode(WrapperMessage.Exit(0))))
         }

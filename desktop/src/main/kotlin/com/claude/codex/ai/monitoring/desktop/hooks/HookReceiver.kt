@@ -39,6 +39,7 @@ class HookReceiver(
         // Claude started by `agentmon claude` is filed under its terminal's session.
         val event = decoded.copy(sessionId = WrapperHub.sessionIdFor(decoded.sessionId, wrapperHeader))
         if (!tracker.onHook(event)) return HookResponse(HookResult.IGNORED)
+        control?.takeStopRequest(event.sessionId, event.eventName)?.let { return HookResponse(HookResult.ACCEPTED, it) }
 
         val reply = when (event.eventName) {
             "PermissionRequest" -> control?.onPermissionRequest(

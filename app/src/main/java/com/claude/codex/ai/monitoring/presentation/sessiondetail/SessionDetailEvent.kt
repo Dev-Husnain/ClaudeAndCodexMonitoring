@@ -17,4 +17,10 @@ sealed interface SessionDetailEvent {
     data class OnTabSelect(val tab: DetailTab) : SessionDetailEvent
 
     data class OnTerminalKey(val key: TerminalKeyType) : SessionDetailEvent
+
+    data object OnStopClick : SessionDetailEvent
+
+    data object OnStopConfirm : SessionDetailEvent
+
+    data object OnStopDismiss : SessionDetailEvent
 }

@@ -80,6 +80,9 @@ class SessionDetailViewModel(
                 it.copy(tab = if (it.hasTerminal) event.tab else DetailTab.ACTIVITY)
             }
             is SessionDetailEvent.OnTerminalKey -> pressKey(event.key)
+            SessionDetailEvent.OnStopClick -> _sessionDetailUiState.update { it.copy(showStopConfirm = it.canStop) }
+            SessionDetailEvent.OnStopDismiss -> _sessionDetailUiState.update { it.copy(showStopConfirm = false) }
+            SessionDetailEvent.OnStopConfirm -> stop()
         }
     }
 
@@ -97,6 +100,16 @@ class SessionDetailViewModel(
         if (_sessionDetailUiState.value.sending) return
         startSending()
         viewModelScope.launch { finishSending(agentRepository.quickAction(sessionId, action), clearComposer = false) }
+    }
+
+    private fun stop() {
+        _sessionDetailUiState.update { it.copy(showStopConfirm = false) }
+        if (_sessionDetailUiState.value.sending) return
+        startSending()
+        viewModelScope.launch {
+            val status = agentRepository.quickAction(sessionId, QuickActionType.INTERRUPT)
+            finishSending(status, clearComposer = false, note = status.toStopNote())
+        }
     }
 
     private fun pressKey(key: TerminalKeyType) {
@@ -125,8 +138,11 @@ class SessionDetailViewModel(
         _sessionDetailUiState.update { it.copy(sending = true, deliveryNote = UiText.Res(R.string.delivery_sending), deliveryTone = StatusTone.STALE) }
     }
 
-    private suspend fun finishSending(status: DeliveryStatus?, clearComposer: Boolean) {
-        val note = status?.toNote()
+    private suspend fun finishSending(
+        status: DeliveryStatus?,
+        clearComposer: Boolean,
+        note: Pair<UiText, StatusTone>? = status?.toNote(),
+    ) {
         _sessionDetailUiState.update {
             it.copy(
                 sending = false,

@@ -117,5 +117,9 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
      fingers zoom the terminal.
   4. After you change the hooks version (agent update), restart running Claude sessions once so they
      pick up the new hook settings.
+- **Stopping Claude from the phone.** Open the session and tap **Stop Claude** (shown while it works, on
+  both tabs). Sessions started with `agentmon claude` stop at once; others stop at Claude's next step (its
+  next tool call). After a stop in the terminal, Claude puts your interrupted prompt back into its input box;
+  check the Terminal tab before typing the next message.
 - **Phase 7 (notifications):** allow notifications for AgentMon, and turn off battery optimisation for it
   (Settings → Apps → AgentMon → Battery → Unrestricted; Xiaomi/MIUI also needs *Autostart*).

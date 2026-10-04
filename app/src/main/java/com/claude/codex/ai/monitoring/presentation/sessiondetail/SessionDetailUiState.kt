@@ -34,6 +34,9 @@ data class SessionDetailUiState(
     /** Started with `agentmon claude`: its terminal can be shown and typed into. */
     val hasTerminal: Boolean = false,
     val tab: DetailTab = DetailTab.ACTIVITY,
+    /** Claude is working and this phone may control it: the Stop button is shown. */
+    val canStop: Boolean = false,
+    val showStopConfirm: Boolean = false,
 ) {
     /** Copies the fields the screen owns locally (typing, sending) onto a fresh server-derived state. */
     fun withLocalFrom(previous: SessionDetailUiState) = copy(
@@ -43,6 +46,7 @@ data class SessionDetailUiState(
         deliveryNote = previous.deliveryNote,
         deliveryTone = previous.deliveryTone,
         tab = if (hasTerminal) previous.tab else DetailTab.ACTIVITY,
+        showStopConfirm = previous.showStopConfirm && canStop,
     )
 }
 

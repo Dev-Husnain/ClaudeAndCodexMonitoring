@@ -189,4 +189,35 @@ class SessionDetailViewModelTest {
         runCurrent()
         assertEquals(UiText.Res(R.string.delivery_read_only), vm.sessionDetailUiState.value.deliveryNote)
     }
+
+    @Test
+    fun `stop asks first, then stops Claude and says when it takes effect`() {
+        repository.snapshot.value = repository.snapshot.value.copy(
+            sessions = listOf(sessionModel("s1", status = SessionStatus.RUNNING)),
+        )
+        repository.nextDelivery = DeliveryStatus.Queued
+        val vm = viewModel()
+        runCurrent()
+        assertTrue(vm.sessionDetailUiState.value.canStop)
+
+        vm.onEvent(SessionDetailEvent.OnStopClick)
+        assertTrue(vm.sessionDetailUiState.value.showStopConfirm)
+        assertTrue(repository.quickActions.isEmpty(), "nothing is sent before confirming")
+
+        vm.onEvent(SessionDetailEvent.OnStopConfirm)
+        runCurrent()
+        assertEquals(listOf("s1" to QuickActionType.INTERRUPT), repository.quickActions)
+        assertFalse(vm.sessionDetailUiState.value.showStopConfirm)
+        assertEquals(UiText.Res(R.string.delivery_stop_queued), vm.sessionDetailUiState.value.deliveryNote)
+    }
+
+    @Test
+    fun `there is nothing to stop when Claude is idle`() {
+        repository.snapshot.value = repository.snapshot.value.copy(sessions = listOf(sessionModel("s1", status = SessionStatus.IDLE)))
+        val vm = viewModel()
+        runCurrent()
+        assertFalse(vm.sessionDetailUiState.value.canStop)
+        vm.onEvent(SessionDetailEvent.OnStopClick)
+        assertFalse(vm.sessionDetailUiState.value.showStopConfirm)
+    }
 }

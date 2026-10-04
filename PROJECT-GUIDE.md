@@ -166,7 +166,18 @@ DataStore. It is covered by the manual gate above.
   VM terminal (3), terminal mapper (2); 122 tests in total (app 47, shared 14, desktop 56, cli 5)
 - [x] Verified on this PC: interactive `agentmon claude` in Windows Terminal renders normally, the session
   showed as Controllable before any prompt, and the wrapper re-linked by itself after an agent restart
-- [ ] **Gate:** type into the terminal and approve from the Xiaomi (phone was locked; pending)
+- [x] **Gate:** on the Xiaomi via the tunnel: the wrapper session appeared before any prompt, the Terminal tab mirrored
+  Claude live, a prompt typed on the phone ran (three sleeps, then hello5.txt), and Stop interrupted a long task
+
+### Feature: Stop from the phone
+- [x] **Stop Claude** button (with confirmation) on the session screen, both tabs, while Claude runs or waits
+- [x] Wrapper sessions: Esc at once, session marked idle (an interrupt fires no hook)
+- [x] Every other hooked session: the next hook answers `{"continue": false}` (works without the wrapper and
+  without Away mode); the request expires with the turn or after 30 min so it never hits a later turn
+- [x] Tests: ControlCenter stop (3), wrapper stop in the link test, detail VM stop (2); 127 tests in total
+  (app 49, shared 14, desktop 59, cli 5)
+- [x] **Verified on the Xiaomi:** wrapper session stopped mid-story (story.txt never written); a plain `claude -p`
+  session stopped at step 14 of 25 and exited
 
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
@@ -195,7 +206,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M3 Pairing + mutual auth | Done, gate verified on a real phone |
 | M4 Hooks + state machine | Done, verified with real `claude` sessions on this PC and the Xiaomi |
 | M5a Control via hooks (Away mode) | Done, gate verified on a real phone |
-| M5b Wrapper (`agentmon claude`) + terminal mirror | Built and tested; phone gate pending |
+| M5b Wrapper (`agentmon claude`) + terminal mirror | Done, gate verified on a real phone (plus Stop from the phone) |
 | M6 Headless resume | Not started |
 | M7 Notifications (foreground service) | Not started |
 | M8 Hardening + QA | Not started |
@@ -230,6 +241,9 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
   so it is controllable before the first prompt and stays one entry across `/clear`.
 - **D22** Quick actions on wrapper sessions without a held hook press Claude's own keys (Enter/Esc) through a
   single `ClaudeCodePromptProfile`, so a Claude Code UI change is a one-file fix.
+- **D23** Stop uses the strongest mechanism available per session: a held hook's own decision, Esc in a wrapper's
+  terminal, otherwise `continue: false` on the next hook. Hooks cannot interrupt Claude between tool calls, so
+  plain sessions stop at their next step, not instantly.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
@@ -243,6 +257,11 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - `agentmon claude` started from inside another Claude Code session inherits its session markers (Claude then
   says transcript saving is off); start it from a normal terminal.
 - A `.cmd` given in `AGENTMON_CLAUDE` must not contain spaces (cmd.exe quoting); PATH lookups are fine.
+- Plain (non-wrapper) sessions stop at their next tool call; a long answer with no tool call runs to its end.
+- After an Esc stop, Claude restores the interrupted prompt into its input box; a phone message typed next is
+  appended to it. Clearing the input first (e.g. Ctrl+U) is not verified yet.
+- The terminal font lacks a few symbols Claude uses (e.g. `⏵⏵` in the status line), shown as boxes.
+- Codex is not supported yet (spec: `CodexAdapter` later); everything here targets Claude Code.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.
 - Default phone name comes from the system (MIUI reports the model, e.g. "M2101K7AG"); it can be edited before sending.
