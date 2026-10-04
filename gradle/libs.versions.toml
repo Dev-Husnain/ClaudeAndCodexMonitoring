@@ -27,6 +27,7 @@ jediterm = "3.72"
 pty4j = "0.13.13"
 # jline 4 needs Java 22; 3.30 runs on the Java 17 target.
 jline = "3.30.17"
+jna = "5.14.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -78,6 +79,7 @@ mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning"
 jediterm-core = { group = "org.jetbrains.jediterm", name = "jediterm-core", version.ref = "jediterm" }
 pty4j = { group = "org.jetbrains.pty4j", name = "pty4j", version.ref = "pty4j" }
 jline-terminal-jni = { group = "org.jline", name = "jline-terminal-jni", version.ref = "jline" }
+jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4j" }
 
 [plugins]

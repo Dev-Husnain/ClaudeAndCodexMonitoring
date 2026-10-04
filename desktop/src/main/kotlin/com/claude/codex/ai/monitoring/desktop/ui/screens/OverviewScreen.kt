@@ -22,15 +22,27 @@ import com.claude.codex.ai.monitoring.desktop.ui.components.DesktopCard
 import com.claude.codex.ai.monitoring.desktop.ui.components.Pill
 import com.claude.codex.ai.monitoring.desktop.ui.components.SessionTile
 import com.claude.codex.ai.monitoring.desktop.ui.components.StatusDot
+import com.claude.codex.ai.monitoring.desktop.ui.components.SwitchRow
 import com.claude.codex.ai.monitoring.desktop.ui.theme.DesktopTheme
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 
-/** Agent status plus live session cards grouped by project. */
+/** What the "This computer" card shows. */
+data class ComputerOptionsUiModel(
+    val keepAwake: Boolean,
+    val startWithWindows: Boolean,
+    val autoStartSupported: Boolean,
+    val error: String?,
+)
+
+/** Agent status, this computer's options, and live session cards grouped by project. */
 @Composable
 fun OverviewScreen(
     registry: RegistryState,
     connectedPhones: Int,
     demoMode: Boolean,
+    computer: ComputerOptionsUiModel,
+    onKeepAwakeChange: (Boolean) -> Unit,
+    onStartWithWindowsChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = DesktopTheme.colors
@@ -70,6 +82,29 @@ fun OverviewScreen(
                     }
                     Pill(text = "$connectedPhones phone${if (connectedPhones == 1) "" else "s"} connected", color = colors.running)
                     if (demoMode) Pill(text = "Demo sessions", color = colors.waiting)
+                }
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            DesktopCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("This computer", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                    SwitchRow(
+                        title = "Stay awake while Claude works",
+                        summary = "Keeps Windows from sleeping while a session runs or waits for you, or Away mode is on. " +
+                            "The screen can still turn off; closing a laptop lid still sleeps.",
+                        checked = computer.keepAwake,
+                        onChange = onKeepAwakeChange,
+                    )
+                    if (computer.autoStartSupported) {
+                        SwitchRow(
+                            title = "Start with Windows",
+                            summary = "Starts AgentMon in the tray when you sign in, so your phone can reach Claude after a restart.",
+                            checked = computer.startWithWindows,
+                            onChange = onStartWithWindowsChange,
+                        )
+                    }
+                    computer.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.error) }
                 }
             }
         }

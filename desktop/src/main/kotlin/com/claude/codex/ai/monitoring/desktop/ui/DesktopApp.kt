@@ -35,6 +35,7 @@ import com.claude.codex.ai.monitoring.desktop.ui.components.SwitchRow
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ActivityScreen
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ApprovalDialogContent
 import com.claude.codex.ai.monitoring.desktop.ui.screens.DevicesScreen
+import com.claude.codex.ai.monitoring.desktop.ui.screens.ComputerOptionsUiModel
 import com.claude.codex.ai.monitoring.desktop.ui.screens.OverviewScreen
 import com.claude.codex.ai.monitoring.desktop.ui.screens.PairDialogContent
 import com.claude.codex.ai.monitoring.desktop.ui.screens.ProjectsScreen
@@ -58,6 +59,9 @@ fun DesktopApp(controller: DesktopController) {
     val lastHookAt by controller.tracker.lastHookAt.collectAsState()
     val projectError by controller.projectError.collectAsState()
     val awayMode by controller.control.awayMode.collectAsState()
+    val keepAwake by controller.computer.keepAwakeEnabled.collectAsState()
+    val startWithWindows by controller.computer.startWithWindows.collectAsState()
+    val computerError by controller.computer.error.collectAsState()
     val colors = DesktopTheme.colors
 
     var tab by remember { mutableStateOf(Tab.OVERVIEW) }
@@ -124,6 +128,14 @@ fun DesktopApp(controller: DesktopController) {
                 registry = registryState,
                 connectedPhones = online.size,
                 demoMode = controller.demoMode,
+                computer = ComputerOptionsUiModel(
+                    keepAwake = keepAwake,
+                    startWithWindows = startWithWindows,
+                    autoStartSupported = controller.computer.autoStartSupported,
+                    error = computerError,
+                ),
+                onKeepAwakeChange = controller.computer::setKeepAwake,
+                onStartWithWindowsChange = controller.computer::setStartWithWindows,
             )
             Tab.PROJECTS -> ProjectsScreen(
                 projects = projects,

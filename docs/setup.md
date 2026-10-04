@@ -117,6 +117,16 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
      fingers zoom the terminal.
   4. After you change the hooks version (agent update), restart running Claude sessions once so they
      pick up the new hook settings.
+- **Phase 8: keep it running while you are away.**
+  1. Install the agent once so it runs without Gradle: quit a running agent (tray → Quit), then run
+     `scripts\install-agent.cmd`. It copies the agent to `%LOCALAPPDATA%\AgentMon\agent`. Start it with
+     `%LOCALAPPDATA%\AgentMon\agent\AgentMon.cmd` (re-run the install script after updating the code).
+  2. On the agent's **Overview → This computer**, turn on **Start with Windows**. It then starts in the tray
+     every time you sign in. (Only the installed copy can be registered; the switch explains if you run it from
+     Gradle.) To undo, turn the switch off.
+  3. **Stay awake while Claude works** is on by default: Windows does not go to sleep while a session runs or waits
+     for you, or Away mode is on. The screen may still turn off. A laptop still sleeps when you close the lid unless
+     you change "When I close the lid" in Windows' power options.
 - **Phase 6: continue any saved conversation from the phone.**
   1. On Home, each project has a **History** link: Claude's saved conversations for it (last 30 days), newest first.
   2. Tap one, type what Claude should do next, and tap **Continue**. Claude resumes that conversation on your

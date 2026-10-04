@@ -25,6 +25,7 @@ Use the Android Studio JBR: `export JAVA_HOME="/c/Program Files/Android/Android 
 ./gradlew :app:installDebug                  # install on device/emulator
 ./gradlew :desktop:run                       # desktop agent (real sessions from Projects; --args="--demo" adds fake ones)
 ./gradlew :cli:installDist                   # agentmon wrapper -> cli/build/install/agentmon/bin
+./gradlew :desktop:installAgent              # agent without Gradle -> %LOCALAPPDATA%\AgentMon\agent (quit it first)
 ./gradlew :app:testDebugUnitTest :shared:test :desktop:test :cli:test   # all unit/integration tests
 ./gradlew :app:testDebugUnitTest --tests "com.claude.codex.ai.monitoring.data.repo.AgentStateReducerTest"   # one class
 ./gradlew :app:lintDebug                     # must report "No issues found"

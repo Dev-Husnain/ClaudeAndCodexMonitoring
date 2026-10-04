@@ -17,6 +17,7 @@ import com.claude.codex.ai.monitoring.desktop.session.SessionTracker
 import com.claude.codex.ai.monitoring.protocol.ProjectDto
 import java.nio.file.Path
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
+import com.claude.codex.ai.monitoring.desktop.system.ComputerOptions
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +50,7 @@ class DesktopController(
     private val installer: HookInstaller,
     val control: ControlCenter,
     private val scope: CoroutineScope,
+    val computer: ComputerOptions,
 ) {
     fun setAwayMode(enabled: Boolean) = control.setAwayMode(enabled, by = "desktop")
 

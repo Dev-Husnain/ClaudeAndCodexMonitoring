@@ -31,6 +31,10 @@ import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
 import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
 import com.claude.codex.ai.monitoring.desktop.history.TranscriptStore
 import com.claude.codex.ai.monitoring.desktop.storage.AppStorage
+import com.claude.codex.ai.monitoring.desktop.system.AutoStart
+import com.claude.codex.ai.monitoring.desktop.system.ComputerOptions
+import com.claude.codex.ai.monitoring.desktop.system.DesktopSettings
+import com.claude.codex.ai.monitoring.desktop.system.KeepAwake
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.desktop.ui.DesktopApp
@@ -53,13 +57,16 @@ import java.nio.file.Path
 private const val VERSION = "1.0.0"
 
 /**
- * Arguments: `--demo` adds fake sessions for trying the phone without Claude Code; `--public-url=https://…` overrides the tunnel
+ * Arguments: `--background` starts in the tray (used when starting with Windows); `--demo` adds fake sessions for trying
+ * the phone without Claude Code; `--public-url=https://…` overrides the tunnel
  * address put in pairing QR codes; `--data-dir=…` moves the key and database (for testing).
  */
 fun main(args: Array<String>) {
     fun arg(name: String) = args.firstOrNull { it.startsWith("--$name=") }?.substringAfter("=")
     // Real sessions come from Claude Code hooks (phase 4); demo sessions are opt-in now.
     val demoMode = "--demo" in args
+    // Started with Windows: stay in the tray until opened.
+    val startHidden = "--background" in args
     val publicUrl = arg("public-url") ?: "https://${ProtocolConstants.PUBLIC_HOST}"
     val computerName = System.getenv("COMPUTERNAME")
         ?: runCatching { InetAddress.getLocalHost().hostName }.getOrNull()
@@ -99,8 +106,10 @@ fun main(args: Array<String>) {
         handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver,
         WrapperEndpoint(installer.secret, wrappers, audit),
     )
+    val computer = ComputerOptions(DesktopSettings(dataDir.resolve("settings.properties")), KeepAwake(), AutoStart(), scope)
+    computer.start(registry.state, control.awayMode)
     val controller = DesktopController(
-        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope,
+        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope, computer,
     )
 
     server.start()
@@ -109,7 +118,7 @@ fun main(args: Array<String>) {
     if (demoMode) scope.launch { DemoSessionSimulator(registry).run() }
 
     application {
-        var windowVisible by remember { mutableStateOf(true) }
+        var windowVisible by remember { mutableStateOf(!startHidden) }
         val state by registry.state.collectAsState()
         val palette = remember { DesktopColors() }
         val trayDot = state.sessions.aggregateState()?.color(palette) ?: palette.stale

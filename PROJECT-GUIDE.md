@@ -179,6 +179,20 @@ DataStore. It is covered by the manual gate above.
 - [x] **Verified on the Xiaomi:** wrapper session stopped mid-story (story.txt never written); a plain `claude -p`
   session stopped at step 14 of 25 and exited
 
+### Feature: Hardening (M8, spec phase 8), first part
+- [x] **Stay awake while Claude works** (default on): `SetThreadExecutionState(ES_SYSTEM_REQUIRED)` through JNA on one
+  dedicated thread while a session runs, waits or is held, or Away mode is on; the display may still sleep
+- [x] **Start with Windows**: per-user `Run` key → installed copy (`:desktop:installAgent` → `%LOCALAPPDATA%\AgentMon\agent`,
+  `javaw` + jars, `--background` starts in the tray); refuses to register a copy running from Gradle's build folders
+- [x] "This computer" card on the desktop Overview with both switches; settings in `settings.properties`
+- [x] Tests (4): keep-awake decisions, Run-key command, not-installed/other-OS refusal, settings persistence;
+  153 tests in total (app 62, shared 17, desktop 72, cli 2)
+- [x] `installAgent` verified: folder with AgentMon.cmd and 76 jars incl. the Windows UI runtime (skiko), SQLite, JNA
+- [ ] Not verified: starting the installed copy and a real sign-in auto-start (the agent was stopped by Claude Code
+  for low memory and not restarted without the owner)
+- [ ] Remaining, needs the owner: an MSI/EXE installer needs a JDK with `jpackage` (the Android Studio JBR has none);
+  optional end-to-end encryption on top of the tunnel's TLS; a TalkBack/large-font QA pass on the phone
+
 ### Feature: Resume any saved conversation + remove from phone (M6, spec phase 6)
 - [x] Checked the docs first (reported to the owner): `claude -p --resume <id>` uses the normal subscription login and
   plan limits (no API key; only `--bare` would need one), keeps the session id (`--fork-session` would not), and runs
@@ -243,7 +257,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M5b Wrapper (`agentmon claude`) + terminal mirror | Done, gate verified on a real phone (plus Stop from the phone) |
 | M6 Headless resume (History, resume, remove from phone) | Done, verified on a real phone |
 | M7 Notifications (foreground service) | Done, verified on a real phone |
-| M8 Hardening + QA | Not started |
+| M8 Hardening + QA | Partly done: stay awake, start with Windows, installed agent; installer/E2E/QA open |
 
 ## 9. Decisions & Assumptions
 - **D1** `:shared` is plain Kotlin/JVM rather than KMP (both consumers are JVM).
@@ -285,6 +299,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D26** "Delete" is phone-only (owner's choice): hidden ids live in a local DataStore with the computer's activity
   time; transcripts on the computer are never touched.
 - **D27** Resuming is refused while any Claude has the conversation open (two writers would interleave the transcript).
+- **D28** No new JDK was installed for packaging; the agent is "installed" as jars + `javaw` so it can start with
+  Windows today. A real MSI needs `jpackage` (owner decision).
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.

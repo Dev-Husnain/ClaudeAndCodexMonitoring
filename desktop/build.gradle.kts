@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.sqldelight.sqlite.driver)
     implementation(libs.zxing.core)
     implementation(libs.jediterm.core)
+    implementation(libs.jna)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
@@ -61,4 +62,20 @@ compose.desktop {
 compose.resources {
     packageOfResClass = "com.claude.codex.ai.monitoring.desktop.resources"
     publicResClass = false
+}
+
+/**
+ * Installs the agent to %LOCALAPPDATA%\AgentMon\agent (or ~/.agentmon/agent): its jars plus AgentMon.cmd, so it
+ * starts in seconds without Gradle and can be registered to start with Windows. Quit a running agent first:
+ * Windows keeps its jars locked.
+ */
+val installAgent by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Installs the desktop agent for running without Gradle and starting with Windows."
+    val target = System.getenv("LOCALAPPDATA")?.let { file("$it/AgentMon/agent") }
+        ?: file("${System.getProperty("user.home")}/.agentmon/agent")
+    from(tasks.named("jar")) { into("lib") }
+    from(configurations.named("runtimeClasspath")) { into("lib") }
+    from(layout.projectDirectory.dir("src/dist"))
+    into(target)
 }
