@@ -117,6 +117,15 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
      fingers zoom the terminal.
   4. After you change the hooks version (agent update), restart running Claude sessions once so they
      pick up the new hook settings.
+- **Phase 6: continue any saved conversation from the phone.**
+  1. On Home, each project has a **History** link: Claude's saved conversations for it (last 30 days), newest first.
+  2. Tap one, type what Claude should do next, and tap **Continue**. Claude resumes that conversation on your
+     computer (with your normal Claude login) and the session opens on the phone. Its permission prompts come to
+     the phone, even with Away mode off.
+  3. A session that has ended can also be continued by simply sending a message to it.
+  4. A conversation Claude still has open shows **Open now**; tapping it opens the live session instead.
+  5. Long-press a session (or a History entry) to **Remove from this phone**. It disappears from the phone's list
+     only; nothing changes on the computer, and it comes back if Claude works in it again.
 - **Stopping Claude from the phone.** Open the session and tap **Stop Claude** (shown while it works, on
   both tabs). Sessions started with `agentmon claude` stop at once; others stop at Claude's next step (its
   next tool call). After a stop in the terminal, Claude puts your interrupted prompt back into its input box;

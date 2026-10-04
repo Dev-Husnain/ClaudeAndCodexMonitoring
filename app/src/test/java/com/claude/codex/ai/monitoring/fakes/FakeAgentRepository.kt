@@ -2,7 +2,9 @@ package com.claude.codex.ai.monitoring.fakes
 
 import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
+import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.ResumeOutcomeModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
 import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
@@ -57,5 +59,17 @@ class FakeAgentRepository(initial: AgentSnapshotModel = AgentSnapshotModel()) : 
     override suspend fun pressKey(sessionId: String, key: TerminalKeyType): DeliveryStatus {
         keys += sessionId to key
         return nextDelivery
+    }
+
+    /** Saved conversations per project; a missing project answers null (computer unreachable). */
+    val past = mutableMapOf<String, List<PastSessionModel>>()
+    val resumes = mutableListOf<Triple<String, String, String>>()
+    var nextResumeSessionId: String? = "resumed"
+
+    override suspend fun pastSessions(projectId: String): List<PastSessionModel>? = past[projectId]
+
+    override suspend fun resumeSession(projectId: String, claudeSessionId: String, text: String): ResumeOutcomeModel {
+        resumes += Triple(projectId, claudeSessionId, text)
+        return ResumeOutcomeModel(nextDelivery, nextResumeSessionId.takeIf { nextDelivery !is DeliveryStatus.Failed })
     }
 }

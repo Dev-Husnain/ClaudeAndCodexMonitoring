@@ -12,7 +12,9 @@ import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
+import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.ResumeOutcomeModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
 import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.domain.models.PairingModel
@@ -68,6 +70,7 @@ class AgentRepositoryImpl(
 
     /** Requests waiting for the desktop's `ack` / `error`, by envelope id. */
     private val pendingAcks = ConcurrentHashMap<String, CompletableDeferred<Message>>()
+    private val pendingPastSessions = ConcurrentHashMap<String, CompletableDeferred<List<PastSessionModel>>>()
     private val reconnectRequests = Channel<Unit>(Channel.CONFLATED)
 
     /** The terminal a screen is showing (at most one), re-attached after every reconnect. */
@@ -121,16 +124,20 @@ class AgentRepositoryImpl(
         request(Message.TerminalKeyRequest(sessionId, key.toDto()))
 
     /** Sends [message] and waits for the desktop to confirm it (`ack`) or refuse it (`error`). */
-    private suspend fun request(message: Message): DeliveryStatus {
+    private suspend fun request(message: Message): DeliveryStatus = requestWithDetail(message).first
+
+    /** Like [request], plus the `detail` of a successful `ack` (e.g. the session a resume opened). */
+    private suspend fun requestWithDetail(message: Message): Pair<DeliveryStatus, String?> {
         if (state.value.connection !is ConnectionStatus.Connected) {
-            return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED)
+            return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED) to null
         }
         val out = OutgoingMessage(message)
         val reply = CompletableDeferred<Message>()
         pendingAcks[out.id] = reply
         return try {
-            if (outgoing.trySend(out).isFailure) return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED)
-            when (val answer = withTimeoutOrNull(ACK_TIMEOUT_MS) { reply.await() }) {
+            if (outgoing.trySend(out).isFailure) return DeliveryStatus.Failed(DeliveryStatus.FailureReason.NOT_CONNECTED) to null
+            val answer = withTimeoutOrNull(ACK_TIMEOUT_MS) { reply.await() }
+            val status = when (answer) {
                 null -> DeliveryStatus.Failed(DeliveryStatus.FailureReason.TIMEOUT)
                 is Message.Ack -> when (answer.result) {
                     DeliveryResult.DELIVERED -> DeliveryStatus.Delivered
@@ -147,9 +154,27 @@ class AgentRepositoryImpl(
                 )
                 else -> DeliveryStatus.Failed(DeliveryStatus.FailureReason.REJECTED)
             }
+            status to (answer as? Message.Ack)?.takeIf { it.result != DeliveryResult.FAILED }?.detail
         } finally {
             pendingAcks.remove(out.id)
         }
+    }
+
+    override suspend fun pastSessions(projectId: String): List<PastSessionModel>? {
+        if (state.value.connection !is ConnectionStatus.Connected) return null
+        val reply = CompletableDeferred<List<PastSessionModel>>()
+        pendingPastSessions[projectId] = reply
+        return try {
+            if (outgoing.trySend(OutgoingMessage(Message.PastSessions(projectId))).isFailure) return null
+            withTimeoutOrNull(ACK_TIMEOUT_MS) { reply.await() }
+        } finally {
+            pendingPastSessions.remove(projectId, reply)
+        }
+    }
+
+    override suspend fun resumeSession(projectId: String, claudeSessionId: String, text: String): ResumeOutcomeModel {
+        val (status, sessionId) = requestWithDetail(Message.ResumeSession(projectId, claudeSessionId, text))
+        return ResumeOutcomeModel(status, sessionId)
     }
 
     private suspend fun runConnection(pairing: PairingModel) {
@@ -184,6 +209,7 @@ class AgentRepositoryImpl(
                         is Message.Error -> message.ackId?.let { pendingAcks[it]?.complete(message) }
                         // Kept out of the snapshot: screens change often and only the open one matters.
                         is Message.TerminalScreen -> terminalScreen.value = message.sessionId to message.toModel()
+                        is Message.PastSessionsResult -> pendingPastSessions[message.projectId]?.complete(message.sessions.map { it.toModel() })
                         is Message.Ready -> attachedTerminal.value?.let { outgoing.trySend(OutgoingMessage(Message.TerminalAttach(it))) }
                         else -> Unit
                     }

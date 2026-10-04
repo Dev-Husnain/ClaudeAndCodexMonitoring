@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,6 +27,9 @@ import com.claude.codex.ai.monitoring.core.theme.Dimens
 fun SurfaceCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** Long press (with [onLongClickLabel] read by TalkBack); only used together with [onClick]. */
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
     accent: Color? = null,
     shape: Shape = MaterialTheme.shapes.large,
     contentPadding: PaddingValues = PaddingValues(Dimens.SpaceLg),
@@ -43,7 +48,17 @@ fun SurfaceCard(
     val cardContent: @Composable () -> Unit = {
         Column(modifier = Modifier.padding(contentPadding), content = content)
     }
-    if (onClick != null) {
+    if (onClick != null && onLongClick != null) {
+        Surface(
+            modifier = modifier
+                .clip(shape)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = onLongClickLabel),
+            shape = shape,
+            color = colors.surface,
+            border = border,
+            content = cardContent,
+        )
+    } else if (onClick != null) {
         Surface(
             onClick = onClick,
             modifier = modifier,

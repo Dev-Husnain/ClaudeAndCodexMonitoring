@@ -147,7 +147,7 @@
     <string name="detail_last_tool">Last tool</string>
     <string name="detail_control_monitor_only">Monitor only</string>
     <string name="detail_control_wrapper">Controllable</string>
-    <string name="detail_control_headless">Can resume</string>
+    <string name="detail_control_headless">From your phone</string>
     <string name="detail_error_info">Error: %1$s</string>
     <string name="detail_no_activity_title">No activity yet</string>
     <string name="detail_no_activity_message">Events from this session will appear here as they happen.</string>
@@ -252,4 +252,26 @@
     <string name="alert_input_title">Claude is waiting at your computer</string>
     <string name="alert_error_title">Claude stopped with an error</string>
     <string name="alert_public_title">Claude needs you</string>
+
+    <!-- History, resume and remove (M6) -->
+    <string name="home_history">History</string>
+    <string name="home_project_no_sessions">No live sessions. Open History to continue a saved one.</string>
+    <string name="history_title">History</string>
+    <string name="history_hint">Conversations Claude saved on your computer. Tap one to continue it from here.</string>
+    <string name="history_hint_read_only">Conversations Claude saved on your computer. This phone is read-only, so it can\'t continue them.</string>
+    <string name="history_open_now">Open now</string>
+    <string name="history_empty_title">No saved conversations</string>
+    <string name="history_empty_message">Claude Code keeps conversations for 30 days. Ones from this project will show up here.</string>
+    <string name="history_unavailable_title">History not available</string>
+    <string name="history_unavailable_message">Your computer did not answer. Check the connection, and update the desktop agent if it is older.</string>
+    <string name="history_resume_title">Continue this conversation</string>
+    <string name="history_resume_label">What should Claude do next?</string>
+    <string name="history_resume_hint">Claude picks up where it left off, on your computer.</string>
+    <string name="history_resume">Continue</string>
+    <string name="history_resuming">Starting…</string>
+    <string name="detail_headless_hint">Started from your phone: Claude asks you here before it uses a tool.</string>
+    <string name="detail_resume_hint">This session ended. Sending a message continues it on your computer.</string>
+    <string name="remove_session_title">Remove from this phone?</string>
+    <string name="remove_session_message">It disappears from this phone\'s list only. Nothing changes on your computer, and it comes back if Claude works in it again.</string>
+    <string name="remove_session_confirm">Remove from this phone</string>
 </resources>

@@ -45,6 +45,19 @@ sealed interface Message {
     @SerialName("away.set")
     data class SetAwayMode(val enabled: Boolean) : Message
 
+    /** The saved conversations of a project, newest first. Answered with [PastSessionsResult]. */
+    @Serializable
+    @SerialName("sessions.past")
+    data class PastSessions(val projectId: String) : Message
+
+    /**
+     * Continue a saved conversation with [text] as the next prompt (`claude -p --resume`). Needs input
+     * permission; answered with `ack`, whose `detail` is the session id to open on success.
+     */
+    @Serializable
+    @SerialName("session.resume")
+    data class ResumeSession(val projectId: String, val claudeSessionId: String, val text: String) : Message
+
     /** Start receiving [TerminalScreen] for a wrapper session (one terminal per connection). */
     @Serializable
     @SerialName("terminal.attach")
@@ -116,6 +129,11 @@ sealed interface Message {
     @Serializable
     @SerialName("terminal.screen")
     data class TerminalScreen(val sessionId: String, val columns: Int, val lines: List<TerminalLineDto>) : Message
+
+    /** Reply to [PastSessions]. */
+    @Serializable
+    @SerialName("sessions.past.result")
+    data class PastSessionsResult(val projectId: String, val sessions: List<PastSessionDto>) : Message
 
     @Serializable
     @SerialName("ack")

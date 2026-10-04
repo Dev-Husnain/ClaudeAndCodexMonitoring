@@ -33,7 +33,10 @@ fun SessionDetailModel.toUiState(sessionId: String, nowMs: Long): SessionDetailU
         timeline = timeline?.asReversed()?.map { it.toItem(nowMs) },
         canControl = canSendInput,
         showReadOnlyNote = hasSnapshot && session != null && !canSendInput,
-        showComposer = canSendInput && session != null && session.status != SessionStatus.ENDED,
+        // An ended conversation can be continued: the computer resumes it with the message.
+        showComposer = canSendInput && session != null,
+        resumable = session?.status == SessionStatus.ENDED,
+        startedFromPhone = session?.control == SessionControl.HEADLESS,
         awayMode = awayMode,
         awaiting = session?.awaiting?.let { AwaitingUiModel(isPermission = it.kind == AwaitingKind.PERMISSION, detail = it.detail) },
         hasTerminal = session?.control == SessionControl.WRAPPER && session.status != SessionStatus.ENDED,

@@ -179,6 +179,24 @@ DataStore. It is covered by the manual gate above.
 - [x] **Verified on the Xiaomi:** wrapper session stopped mid-story (story.txt never written); a plain `claude -p`
   session stopped at step 14 of 25 and exited
 
+### Feature: Resume any saved conversation + remove from phone (M6, spec phase 6)
+- [x] Checked the docs first (reported to the owner): `claude -p --resume <id>` uses the normal subscription login and
+  plan limits (no API key; only `--bare` would need one), keeps the session id (`--fork-session` would not), and runs
+  the project's hooks, so tracking, approvals and Stop keep working
+- [x] Desktop `TranscriptStore`: lists a project's saved conversations (title: name → ai-title → first prompt),
+  subfolders confirmed by `cwd`, case-insensitive on Windows
+- [x] `HeadlessRunner` + `SessionResumer`: prompt via stdin, never the command line; resume only when no Claude has the
+  conversation open; hooks aliased to the session the phone shows; phone-started runs hold permission prompts for
+  the phone; Stop ends the run; failures shown as an error event
+- [x] Phone: History per project (also for projects without live sessions), resume dialog, "Open now" for live
+  conversations, ended sessions resume when you send a message, long-press **Remove from this phone** (stored with
+  the computer's activity time, so clock differences cannot undo it)
+- [x] Tests: transcripts (4), resume flow with a fake `claude` (5), overview hiding (2), Home remove (1), History VM (4);
+  149 tests in total (app 62, shared 17, desktop 68, cli 2)
+- [x] **Verified on the Xiaomi:** History listed 7 conversations with titles; resuming one answered from its earlier
+  context; sending to the ended session resumed it, its Write prompt waited for the phone with Away mode off,
+  Approve wrote the file; removing hid the session while its transcript stayed on the PC
+
 ### Feature: Alerts when the app is closed (M7, spec phase 7 option A)
 - [x] Setting "Alerts when the app is closed" (off by default); POST_NOTIFICATIONS asked on Android 13+, with an
   explanation and a shortcut to the app's system page (battery, Xiaomi Autostart) if refused
@@ -223,7 +241,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M4 Hooks + state machine | Done, verified with real `claude` sessions on this PC and the Xiaomi |
 | M5a Control via hooks (Away mode) | Done, gate verified on a real phone |
 | M5b Wrapper (`agentmon claude`) + terminal mirror | Done, gate verified on a real phone (plus Stop from the phone) |
-| M6 Headless resume | Not started |
+| M6 Headless resume (History, resume, remove from phone) | Done, verified on a real phone |
 | M7 Notifications (foreground service) | Done, verified on a real phone |
 | M8 Hardening + QA | Not started |
 
@@ -262,6 +280,11 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
   plain sessions stop at their next step, not instantly.
 - **D24** The background service uses type `connectedDevice` (a network link to the user's own computer, with
   CHANGE_NETWORK_STATE): `dataSync` is limited to 6 h a day on Android 15, and `specialUse` needs Play review.
+- **D25** Resume runs `claude -p --resume` with the prompt on stdin. Arguments never carry phone text, because
+  `cmd.exe` (npm's `claude.cmd`) cannot quote arbitrary text safely.
+- **D26** "Delete" is phone-only (owner's choice): hidden ids live in a local DataStore with the computer's activity
+  time; transcripts on the computer are never touched.
+- **D27** Resuming is refused while any Claude has the conversation open (two writers would interleave the transcript).
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
@@ -282,6 +305,10 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - Background alerts do not start by themselves after a phone reboot; opening the app once starts them again.
 - Seen once: the phone's DNS returned a Cloudflare address (188.114.97.6) that this ISP could not reach, so the app
   showed Offline for a few minutes until DNS changed. Nothing in the app can fix that; it recovered on its own.
+- History reads Claude Code's internal transcript format; a future Claude Code change may only degrade titles
+  (sessions without a readable title are skipped).
+- An interactive session closed without a SessionEnd hook (e.g. terminal window closed) stays IDLE in the agent and
+  cannot be resumed from the phone until the agent forgets it (24 h) or restarts.
 - Codex is not supported yet (spec: `CodexAdapter` later); everything here targets Claude Code.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.

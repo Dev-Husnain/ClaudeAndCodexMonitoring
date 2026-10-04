@@ -24,6 +24,8 @@ class HookReceiver(
     private val tracker: SessionTracker,
     private val audit: AuditLog,
     private val control: ControlCenter? = null,
+    /** The session a hook of this Claude session id belongs to, when another one shows it (resumes). */
+    private val sessionAlias: (claudeSessionId: String) -> String? = { null },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private var lastRejectionAuditMs = 0L
@@ -36,9 +38,12 @@ class HookReceiver(
         }
         val decoded = runCatching { HookEventDto.json.decodeFromString(HookEventDto.serializer(), body) }.getOrNull()
             ?: return HookResponse(HookResult.BAD_REQUEST)
-        // Claude started by `agentmon claude` is filed under its terminal's session.
-        val event = decoded.copy(sessionId = WrapperHub.sessionIdFor(decoded.sessionId, wrapperHeader))
+        // Claude started by `agentmon claude` is filed under its terminal's session, a resumed conversation
+        // under the session the phone is looking at.
+        val sessionId = WrapperHub.sessionIdFor(decoded.sessionId, wrapperHeader).let { sessionAlias(it) ?: it }
+        val event = decoded.copy(sessionId = sessionId)
         if (!tracker.onHook(event)) return HookResponse(HookResult.IGNORED)
+        if (sessionId != decoded.sessionId) tracker.recordClaudeSessionId(sessionId, decoded.sessionId)
         control?.takeStopRequest(event.sessionId, event.eventName)?.let { return HookResponse(HookResult.ACCEPTED, it) }
 
         val reply = when (event.eventName) {

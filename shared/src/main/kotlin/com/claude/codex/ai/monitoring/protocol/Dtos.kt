@@ -27,6 +27,11 @@ data class SessionDto(
     val errorInfo: String? = null,
     /** Set while Away mode holds Claude for the owner's answer. */
     val awaiting: AwaitingDto? = null,
+    /**
+     * Claude Code's own session id, when it differs from [sessionId] (a wrapper terminal is keyed by the
+     * wrapper's id). This is what `claude --resume` needs.
+     */
+    val claudeSessionId: String? = null,
 )
 
 @Serializable
@@ -71,3 +76,12 @@ data class TerminalSpanDto(
         const val RGB_FLAG = 1 shl 24
     }
 }
+
+/** A conversation Claude Code saved for a project (its transcript), offered for resuming from the phone. */
+@Serializable
+data class PastSessionDto(
+    val claudeSessionId: String,
+    /** The session's name, Claude's generated title, or its first prompt, shortened. */
+    val title: String,
+    val lastActiveAt: Long,
+)

@@ -36,6 +36,10 @@ data class SessionDetailUiState(
     val tab: DetailTab = DetailTab.ACTIVITY,
     /** Claude is working and this phone may control it: the Stop button is shown. */
     val canStop: Boolean = false,
+    /** Ended: sending a message resumes the conversation. */
+    val resumable: Boolean = false,
+    /** Run started from the phone (`claude -p --resume`): its permission prompts come here. */
+    val startedFromPhone: Boolean = false,
     val showStopConfirm: Boolean = false,
 ) {
     /** Copies the fields the screen owns locally (typing, sending) onto a fresh server-derived state. */

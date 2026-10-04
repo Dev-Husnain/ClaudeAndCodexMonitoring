@@ -28,6 +28,8 @@ data class HomeUiState(
     val staleNotice: UiText? = null,
     val needsYou: List<SessionItemUiModel> = emptyList(),
     val projects: List<ProjectSectionUiModel> = emptyList(),
+    /** Asking whether to remove this session from the phone's list. */
+    val removeTarget: SessionItemUiModel? = null,
 )
 
 @Immutable
@@ -46,6 +48,10 @@ data class SessionItemUiModel(
     val lastTool: UiText?,
     val relativeTime: UiText,
     val isMonitorOnly: Boolean,
+    /** Not working right now, so it can be removed from this phone's list. */
+    val removable: Boolean = false,
+    /** The computer's time of the last activity; a removal hides the session until something newer happens. */
+    val lastActivityMs: Long = 0L,
 )
 
 @Immutable

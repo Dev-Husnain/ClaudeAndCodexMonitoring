@@ -43,6 +43,13 @@ class SessionTracker(
         return true
     }
 
+    /** Remembers Claude's own id for a session shown under another id, so it can be resumed later. */
+    fun recordClaudeSessionId(sessionId: String, claudeSessionId: String) {
+        registry.mutateSession(sessionId) { current ->
+            current?.takeIf { it.claudeSessionId != claudeSessionId }?.copy(claudeSessionId = claudeSessionId)
+        }
+    }
+
     /** Runs until cancelled: stale detection and cleanup every [periodMs]. */
     suspend fun runMaintenance(periodMs: Long = 30_000L) {
         while (coroutineContext.isActive) {

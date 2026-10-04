@@ -7,6 +7,7 @@ import com.claude.codex.ai.monitoring.domain.models.ProjectModel
 import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionOverviewUseCase
 import com.claude.codex.ai.monitoring.fakes.FakeAgentRepository
+import com.claude.codex.ai.monitoring.fakes.FakeHiddenSessionsRepository
 import com.claude.codex.ai.monitoring.fakes.FakePairingRepository
 import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.fakes.sessionModel
@@ -42,7 +43,32 @@ class HomeViewModelTest {
 
     private fun runCurrent() = main.scheduler.runCurrent()
 
-    private fun viewModel() = HomeViewModel(ObserveSessionOverviewUseCase(repository), repository, pairing, Clock { 1_000_000L })
+    private val hidden = FakeHiddenSessionsRepository()
+
+    private fun viewModel() = HomeViewModel(ObserveSessionOverviewUseCase(repository, hidden), repository, pairing, hidden, Clock { 1_000_000L })
+
+    @Test
+    fun `an ended session can be removed from the phone after confirming, a running one cannot`() {
+        repository.snapshot.value = AgentSnapshotModel(
+            connection = ConnectionStatus.Connected(1),
+            projects = listOf(ProjectModel("p1", "Alpha")),
+            sessions = listOf(sessionModel("done", status = SessionStatus.ENDED, lastEventAtMs = 500), sessionModel("busy")),
+            hasSnapshot = true,
+        )
+        val vm = viewModel()
+        runCurrent()
+
+        vm.onEvent(HomeEvent.OnRemoveRequest("busy"))
+        assertEquals(null, vm.homeUiState.value.removeTarget)
+
+        vm.onEvent(HomeEvent.OnRemoveRequest("done"))
+        assertEquals("done", vm.homeUiState.value.removeTarget?.sessionId)
+        vm.onEvent(HomeEvent.OnRemoveConfirm)
+        runCurrent()
+        // Stored with the computer's activity time, so a clock difference cannot undo the removal.
+        assertEquals(mapOf("done" to 500L), hidden.hidden.value)
+        assertEquals(listOf("busy"), vm.homeUiState.value.projects.single().sessions.map { it.sessionId })
+    }
 
     @Test
     fun `shows loading until the first snapshot`() {

@@ -37,11 +37,14 @@ fun SessionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    onLongClick: () -> Unit = {},
 ) {
     val statusLabel = session.statusLabel.resolve()
     val cardDescription = stringResource(R.string.cd_session_card, session.projectName, statusLabel)
     SurfaceCard(
         onClick = onClick,
+        onLongClick = onLongClick.takeIf { session.removable },
+        onLongClickLabel = stringResource(R.string.remove_session_confirm),
         accent = if (highlighted) session.tone.color() else null,
         modifier = modifier
             .fillMaxWidth()

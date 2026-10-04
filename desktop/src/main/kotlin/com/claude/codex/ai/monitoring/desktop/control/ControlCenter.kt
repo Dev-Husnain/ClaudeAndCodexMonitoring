@@ -2,6 +2,8 @@ package com.claude.codex.ai.monitoring.desktop.control
 
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
+import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
+import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperInput
 import com.claude.codex.ai.monitoring.protocol.AwaitingDto
@@ -10,6 +12,7 @@ import com.claude.codex.ai.monitoring.protocol.ControlMode
 import com.claude.codex.ai.monitoring.protocol.DeliveryResult
 import com.claude.codex.ai.monitoring.protocol.EventKind
 import com.claude.codex.ai.monitoring.protocol.Message
+import com.claude.codex.ai.monitoring.protocol.PastSessionDto
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import com.claude.codex.ai.monitoring.protocol.QuickAction
 import com.claude.codex.ai.monitoring.protocol.SessionState
@@ -65,6 +68,13 @@ class ControlCenter(
     @Volatile
     var wrapper: WrapperInput? = null
 
+    /** Continues saved conversations with `claude -p --resume` (phase 6). */
+    @Volatile
+    var resumer: SessionResumer? = null
+
+    @Volatile
+    var headless: HeadlessRunner? = null
+
     fun setAwayMode(enabled: Boolean, by: String) {
         if (_awayMode.value == enabled) return
         _awayMode.value = enabled
@@ -75,7 +85,8 @@ class ControlCenter(
 
     /** Called for every `PermissionRequest` hook. Returns the JSON reply, or null for "no decision". */
     suspend fun onPermissionRequest(sessionId: String, detail: String?): String? {
-        if (!_awayMode.value) return null
+        // A run the phone started has nobody at the keyboard: its prompts always wait for the phone.
+        if (!_awayMode.value && headless?.isRunning(sessionId) != true) return null
         val answer = hold(heldPermissions, sessionId, AwaitingDto(AwaitingKind.PERMISSION, detail, clock()))
         return when (answer) {
             PermissionAnswer.Allow -> permissionJson(allow = true, interrupt = false)
@@ -126,9 +137,18 @@ class ControlCenter(
     /** An instruction typed on the phone. */
     fun deliverText(sessionId: String, text: String): Delivery {
         val session = registry.session(sessionId) ?: return Delivery(DeliveryResult.FAILED, "Session not found")
-        if (session.state == SessionState.ENDED) return Delivery(DeliveryResult.FAILED, "This session has ended")
         val instruction = text.trim().take(MAX_INSTRUCTION)
         if (instruction.isEmpty()) return Delivery(DeliveryResult.FAILED, "Empty message")
+        val resume = resumer
+        if (resume != null && !resume.isOpen(session)) {
+            // Nobody has this conversation open any more: the message continues it.
+            val delivery = resume.resumeEnded(session, instruction)
+            if (delivery.result == DeliveryResult.DELIVERED) {
+                registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.PROMPT, "From your phone", instruction))
+            }
+            return delivery
+        }
+        if (session.state == SessionState.ENDED) return Delivery(DeliveryResult.FAILED, "This session has ended")
 
         val held = synchronized(this) { heldStops.remove(sessionId) }
         val result = when {
@@ -145,6 +165,21 @@ class ControlCenter(
         }
         registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.PROMPT, "From your phone", instruction))
         return result
+    }
+
+    fun pastSessions(projectId: String): List<PastSessionDto>? = resumer?.pastSessions(projectId)
+
+    /** Continues a saved conversation (from the phone's history list). */
+    fun resume(projectId: String, claudeSessionId: String, text: String): Delivery {
+        val instruction = text.trim().take(MAX_INSTRUCTION)
+        if (instruction.isEmpty()) return Delivery(DeliveryResult.FAILED, "Empty message")
+        val delivery = resumer?.resume(projectId, claudeSessionId, instruction)
+            ?: return Delivery(DeliveryResult.FAILED, "Resuming is not available")
+        if (delivery.result == DeliveryResult.DELIVERED) {
+            val sessionId = delivery.detail ?: claudeSessionId
+            registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.PROMPT, "From your phone", instruction))
+        }
+        return delivery
     }
 
     /** Approve / Deny / Interrupt / Continue from the phone. */
@@ -182,6 +217,10 @@ class ControlCenter(
                     Delivery(DeliveryResult.DELIVERED, "Claude stops here")
                 }
             }
+        }
+        if (action == QuickAction.INTERRUPT && headless?.stop(sessionId) == true) {
+            registry.addEvent(TimelineEventDto(newId(), sessionId, clock(), EventKind.STOP, "Stopped from your phone", null))
+            return Delivery(DeliveryResult.DELIVERED)
         }
         wrapperQuickAction(sessionId, action)?.let { return it }
         if (action == QuickAction.INTERRUPT) return requestStop(sessionId)

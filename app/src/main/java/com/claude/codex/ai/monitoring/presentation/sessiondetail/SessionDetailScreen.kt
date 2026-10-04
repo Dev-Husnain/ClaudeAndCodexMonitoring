@@ -151,6 +151,8 @@ fun SessionDetailScreen(
                             onSend = { viewModel.onEvent(SessionDetailEvent.OnSendClick) },
                             sending = state.sending,
                             note = state.deliveryNote?.resolve() ?: when {
+                                state.resumable -> stringResource(R.string.detail_resume_hint)
+                                state.startedFromPhone -> stringResource(R.string.detail_headless_hint)
                                 state.hasTerminal -> stringResource(R.string.detail_terminal_hint)
                                 !state.awayMode && state.awaiting == null -> stringResource(R.string.detail_away_hint)
                                 else -> null

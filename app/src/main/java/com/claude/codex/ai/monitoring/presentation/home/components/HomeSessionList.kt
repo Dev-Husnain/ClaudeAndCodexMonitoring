@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -32,6 +34,8 @@ fun HomeSessionList(
     staleNotice: UiText?,
     onSessionClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onSessionLongClick: (String) -> Unit = {},
+    onHistoryClick: (projectId: String, projectName: String) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     // "Needs you" is inserted above what is on screen, where the scroll anchor would hide it.
@@ -64,6 +68,7 @@ fun HomeSessionList(
                 SessionCard(
                     session = session,
                     onClick = { onSessionClick(session.sessionId) },
+                    onLongClick = { onSessionLongClick(session.sessionId) },
                     highlighted = true,
                     modifier = Modifier.animateItem(),
                 )
@@ -73,14 +78,27 @@ fun HomeSessionList(
             item(key = "project-${project.projectId}", contentType = "header") {
                 SectionHeader(
                     title = project.name,
-                    count = project.sessions.size,
+                    count = project.sessions.size.takeIf { it > 0 },
+                    actionLabel = stringResource(R.string.home_history),
+                    onAction = { onHistoryClick(project.projectId, project.name) },
                     modifier = Modifier.padding(top = Dimens.SpaceMd).animateItem(),
                 )
+            }
+            if (project.sessions.isEmpty()) {
+                item(key = "project-empty-${project.projectId}", contentType = "hint") {
+                    Text(
+                        text = stringResource(R.string.home_project_no_sessions),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
             }
             items(project.sessions, key = { it.sessionId }, contentType = { "session" }) { session ->
                 SessionCard(
                     session = session,
                     onClick = { onSessionClick(session.sessionId) },
+                    onLongClick = { onSessionLongClick(session.sessionId) },
                     modifier = Modifier.animateItem(),
                 )
             }

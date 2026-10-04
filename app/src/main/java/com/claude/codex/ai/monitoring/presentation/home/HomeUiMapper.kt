@@ -8,6 +8,7 @@ import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.SessionControl
 import com.claude.codex.ai.monitoring.domain.models.SessionModel
 import com.claude.codex.ai.monitoring.domain.models.SessionOverviewModel
+import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.presentation.common.toLabel
 import com.claude.codex.ai.monitoring.presentation.common.toTone
 import com.claude.codex.ai.monitoring.presentation.common.toUiModel
@@ -47,7 +48,7 @@ fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?)
         isOffline = !hasSnapshot && offline,
         offlineMessage = UiText.Res(R.string.home_offline_message, listOf(computerText)),
         unauthorized = unauthorized,
-        isEmpty = hasSnapshot && sessionCount == 0 && unauthorized == null,
+        isEmpty = hasSnapshot && sessionCount == 0 && projects.isEmpty() && unauthorized == null,
         staleNotice = lastConnectedAtMs
             ?.takeIf { hasSnapshot && offline }
             ?.let { UiText.Res(R.string.home_offline_last_seen, listOf(it.toRelativeTime(nowMs))) },
@@ -71,4 +72,8 @@ private fun SessionModel.toItemUiModel(projectNames: Map<String, String>, nowMs:
     lastTool = lastTool?.let { UiText.Res(R.string.home_last_tool, listOf(it)) },
     relativeTime = lastEventAtMs.toRelativeTime(nowMs),
     isMonitorOnly = control == SessionControl.MONITOR_ONLY,
+    removable = status in REMOVABLE && awaiting == null,
+    lastActivityMs = lastEventAtMs,
 )
+
+private val REMOVABLE = setOf(SessionStatus.ENDED, SessionStatus.IDLE, SessionStatus.ERROR, SessionStatus.STALE)

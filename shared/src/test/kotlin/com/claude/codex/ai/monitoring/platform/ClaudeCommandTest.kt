@@ -1,4 +1,4 @@
-package com.claude.codex.ai.monitoring.cli
+package com.claude.codex.ai.monitoring.platform
 
 import java.io.File
 import kotlin.test.Test

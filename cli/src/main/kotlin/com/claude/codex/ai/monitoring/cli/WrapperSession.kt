@@ -1,5 +1,6 @@
 package com.claude.codex.ai.monitoring.cli
 
+import com.claude.codex.ai.monitoring.platform.ClaudeCommand
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import com.claude.codex.ai.monitoring.protocol.WrapperMessage
 import com.pty4j.PtyProcess

@@ -18,6 +18,9 @@ sealed interface Route : NavKey {
     data class SessionDetail(val sessionId: String) : Route
 
     @Serializable
+    data class PastSessions(val projectId: String, val projectName: String) : Route
+
+    @Serializable
     data object Settings : Route
 
     @Serializable

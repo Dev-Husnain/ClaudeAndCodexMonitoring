@@ -124,7 +124,12 @@ class ClientHandler(
                         else -> registry.history(message.sessionId, message.beforeTs)
                     }
                 }
-                is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode, is Message.TerminalKeyRequest ->
+                is Message.PastSessions -> when {
+                    !grant.allows(message.projectId) -> Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", frame.id)
+                    else -> Message.PastSessionsResult(message.projectId, control?.pastSessions(message.projectId).orEmpty())
+                }
+                is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode, is Message.TerminalKeyRequest,
+                is Message.ResumeSession ->
                     if (!grant.canSendInput) {
                         Message.Error(ErrorCode.READ_ONLY, "This device is read-only", frame.id)
                     } else {
@@ -163,6 +168,11 @@ class ClientHandler(
         if (message is Message.SetAwayMode) {
             center.setAwayMode(message.enabled, by = device.name)
             return Message.Ack(ackId, DeliveryResult.DELIVERED)
+        }
+        if (message is Message.ResumeSession) {
+            if (!device.grant.allows(message.projectId)) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)
+            val delivery = center.resume(message.projectId, message.claudeSessionId, message.text)
+            return Message.Ack(ackId, delivery.result, delivery.detail)
         }
         val sessionId = when (message) {
             is Message.SendInput -> message.sessionId

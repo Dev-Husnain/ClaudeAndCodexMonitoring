@@ -11,4 +11,6 @@ data class SessionModel(
     val lastTool: String?,
     val errorInfo: String?,
     val awaiting: AwaitingModel? = null,
+    /** Claude's own id when it differs from [sessionId] (a wrapper terminal's conversation). */
+    val claudeSessionId: String? = null,
 )

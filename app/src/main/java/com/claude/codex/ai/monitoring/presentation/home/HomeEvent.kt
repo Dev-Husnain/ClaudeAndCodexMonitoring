@@ -7,4 +7,11 @@ sealed interface HomeEvent {
     data object OnPairAgainClick : HomeEvent
 
     data class OnAwayModeToggle(val enabled: Boolean) : HomeEvent
+
+    /** Long press on a session card. */
+    data class OnRemoveRequest(val sessionId: String) : HomeEvent
+
+    data object OnRemoveConfirm : HomeEvent
+
+    data object OnRemoveDismiss : HomeEvent
 }

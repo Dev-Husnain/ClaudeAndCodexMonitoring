@@ -16,6 +16,7 @@ import com.claude.codex.ai.monitoring.presentation.devicessecurity.DevicesSecuri
 import com.claude.codex.ai.monitoring.presentation.home.HomeScreen
 import com.claude.codex.ai.monitoring.presentation.onboarding.OnboardingScreen
 import com.claude.codex.ai.monitoring.presentation.pair.PairScreen
+import com.claude.codex.ai.monitoring.presentation.pastsessions.PastSessionsScreen
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.SessionDetailScreen
 import com.claude.codex.ai.monitoring.presentation.settings.SettingsScreen
 import org.koin.compose.koinInject
@@ -71,6 +72,15 @@ fun AppNavHost(
                 HomeScreen(
                     onSessionClick = { sessionId -> backStack.add(Route.SessionDetail(sessionId)) },
                     onSettingsClick = { backStack.add(Route.Settings) },
+                    onHistoryClick = { projectId, name -> backStack.add(Route.PastSessions(projectId, name)) },
+                )
+            }
+            entry<Route.PastSessions> { route ->
+                PastSessionsScreen(
+                    projectId = route.projectId,
+                    projectName = route.projectName,
+                    onBack = pop,
+                    onOpenSession = { sessionId -> backStack.add(Route.SessionDetail(sessionId)) },
                 )
             }
             entry<Route.SessionDetail> { route ->

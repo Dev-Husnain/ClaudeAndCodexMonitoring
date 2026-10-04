@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.data.mapper
 import com.claude.codex.ai.monitoring.domain.models.AwaitingKind
 import com.claude.codex.ai.monitoring.domain.models.AwaitingModel
 import com.claude.codex.ai.monitoring.domain.models.ComputerModel
+import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
 import com.claude.codex.ai.monitoring.domain.models.ProjectModel
 import com.claude.codex.ai.monitoring.domain.models.SessionControl
@@ -25,6 +26,7 @@ import com.claude.codex.ai.monitoring.protocol.SessionDto
 import com.claude.codex.ai.monitoring.protocol.SessionState
 import com.claude.codex.ai.monitoring.protocol.TimelineEventDto
 import com.claude.codex.ai.monitoring.protocol.Message
+import com.claude.codex.ai.monitoring.protocol.PastSessionDto
 import com.claude.codex.ai.monitoring.protocol.TerminalKey
 import com.claude.codex.ai.monitoring.protocol.TerminalSpanDto
 
@@ -43,6 +45,7 @@ fun SessionDto.toModel() = SessionModel(
     lastTool = lastTool,
     errorInfo = errorInfo,
     awaiting = awaiting?.toModel(),
+    claudeSessionId = claudeSessionId,
 )
 
 fun TimelineEventDto.toModel() = TimelineEventModel(
@@ -104,6 +107,8 @@ private fun Int?.toTerminalColor(): TerminalColor? = when {
 
 private const val RGB_MASK = 0xFFFFFF
 private const val PALETTE_MAX = 255
+
+fun PastSessionDto.toModel() = PastSessionModel(claudeSessionId = claudeSessionId, title = title, lastActiveAtMs = lastActiveAt)
 
 fun TerminalKeyType.toDto(): TerminalKey = when (this) {
     TerminalKeyType.ENTER -> TerminalKey.ENTER

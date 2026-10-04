@@ -15,6 +15,7 @@ import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.Dimens
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.AwayModeToggle
+import com.claude.codex.ai.monitoring.core.ui.ConfirmDialog
 import androidx.compose.foundation.layout.padding
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
@@ -28,10 +29,23 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeScreen(
     onSessionClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onHistoryClick: (projectId: String, projectName: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.homeUiState.collectAsStateWithLifecycle()
+
+    if (state.removeTarget != null) {
+        ConfirmDialog(
+            title = stringResource(R.string.remove_session_title),
+            message = stringResource(R.string.remove_session_message),
+            confirmLabel = stringResource(R.string.remove_session_confirm),
+            dismissLabel = stringResource(R.string.action_cancel),
+            onConfirm = { viewModel.onEvent(HomeEvent.OnRemoveConfirm) },
+            onDismiss = { viewModel.onEvent(HomeEvent.OnRemoveDismiss) },
+            destructive = true,
+        )
+    }
 
     AuroraBackground(modifier = modifier.fillMaxSize()) {
         Column(
@@ -89,6 +103,8 @@ fun HomeScreen(
                     projects = state.projects,
                     staleNotice = state.staleNotice,
                     onSessionClick = onSessionClick,
+                    onSessionLongClick = { viewModel.onEvent(HomeEvent.OnRemoveRequest(it)) },
+                    onHistoryClick = onHistoryClick,
                 )
             }
         }

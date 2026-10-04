@@ -2,7 +2,10 @@ package com.claude.codex.ai.monitoring.di
 
 import android.os.Build
 import android.provider.Settings
+import com.claude.codex.ai.monitoring.data.local.HiddenSessionsDataSource
 import com.claude.codex.ai.monitoring.data.local.PairingDataSource
+import com.claude.codex.ai.monitoring.data.repo.HiddenSessionsRepositoryImpl
+import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
 import com.claude.codex.ai.monitoring.data.local.SettingsDataSource
 import com.claude.codex.ai.monitoring.data.network.AgentSocketDataSource
 import com.claude.codex.ai.monitoring.data.network.PairingApi
@@ -33,6 +36,8 @@ val dataModule = module {
     single { ReconnectBackoff() }
     single { SettingsDataSource(androidContext()) }
     single { PairingDataSource(androidContext()) }
+    single { HiddenSessionsDataSource(androidContext()) }
+    single<HiddenSessionsRepository> { HiddenSessionsRepositoryImpl(dataSource = get()) }
     single { DeviceKeyDataSource() }
     single { PairingApi(client = get()) }
     single { AgentSocketDataSource(client = get(), codec = get()) }

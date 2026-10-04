@@ -6,7 +6,10 @@ import com.claude.codex.ai.monitoring.domain.models.ProjectSessionsModel
 import com.claude.codex.ai.monitoring.domain.models.SessionOverviewModel
 import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
+import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
+import com.claude.codex.ai.monitoring.domain.repo.hides
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -18,13 +21,17 @@ import kotlinx.coroutines.flow.map
  */
 class ObserveSessionOverviewUseCase(
     private val agentRepository: AgentRepository,
+    private val hiddenSessionsRepository: HiddenSessionsRepository,
 ) {
     operator fun invoke(): Flow<SessionOverviewModel> =
-        agentRepository.snapshot.map { it.toOverview() }.distinctUntilChanged()
+        combine(agentRepository.snapshot, hiddenSessionsRepository.hidden) { snapshot, hidden -> snapshot.toOverview(hidden) }
+            .distinctUntilChanged()
 
-    private fun AgentSnapshotModel.toOverview(): SessionOverviewModel {
+    private fun AgentSnapshotModel.toOverview(hidden: Map<String, Long>): SessionOverviewModel {
         val projectsById = projects.associateBy { it.projectId }
         val (needsYou, others) = sessions
+            // Removed from this phone, unless Claude worked in it since.
+            .filterNot { hidden.hides(it.sessionId, it.lastEventAtMs) }
             .sortedByDescending { it.lastEventAtMs }
             .partition { it.status == SessionStatus.WAITING_INPUT || it.awaiting != null }
         val grouped = others
@@ -36,6 +43,10 @@ class ObserveSessionOverviewUseCase(
                 )
             }
             .sortedByDescending { group -> group.sessions.first().lastEventAtMs }
+            .plus(
+                projects.filter { project -> others.none { it.projectId == project.projectId } }
+                    .map { ProjectSessionsModel(project = it, sessions = emptyList()) },
+            )
         return SessionOverviewModel(
             connection = connection,
             computer = computer,

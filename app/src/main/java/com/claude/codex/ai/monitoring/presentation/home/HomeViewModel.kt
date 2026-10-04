@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.claude.codex.ai.monitoring.core.utils.Clock
 import com.claude.codex.ai.monitoring.core.utils.ticks
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
+import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
 import com.claude.codex.ai.monitoring.domain.repo.PairingRepository
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionOverviewUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ class HomeViewModel(
     observeSessionOverview: ObserveSessionOverviewUseCase,
     private val agentRepository: AgentRepository,
     private val pairingRepository: PairingRepository,
+    private val hiddenSessionsRepository: HiddenSessionsRepository,
     clock: Clock,
 ) : ViewModel() {
 
@@ -28,7 +30,7 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(observeSessionOverview(), pairingRepository.pairing, clock.ticks()) { overview, pairing, now ->
                 overview.toHomeUiState(now, pairing?.computerName)
-            }.collect { state -> _homeUiState.update { state.copy(awayBusy = it.awayBusy) } }
+            }.collect { state -> _homeUiState.update { state.copy(awayBusy = it.awayBusy, removeTarget = it.removeTarget) } }
         }
     }
 
@@ -43,6 +45,16 @@ class HomeViewModel(
                     // The switch follows the computer's `away.update`, so a failure simply leaves it unchanged.
                     _homeUiState.update { it.copy(awayBusy = false) }
                 }
+            }
+            is HomeEvent.OnRemoveRequest -> _homeUiState.update { state ->
+                val session = (state.needsYou + state.projects.flatMap { it.sessions }).firstOrNull { it.sessionId == event.sessionId }
+                state.copy(removeTarget = session?.takeIf { it.removable })
+            }
+            HomeEvent.OnRemoveDismiss -> _homeUiState.update { it.copy(removeTarget = null) }
+            HomeEvent.OnRemoveConfirm -> {
+                val target = _homeUiState.value.removeTarget ?: return
+                _homeUiState.update { it.copy(removeTarget = null) }
+                viewModelScope.launch { hiddenSessionsRepository.hide(target.sessionId, target.lastActivityMs) }
             }
         }
     }

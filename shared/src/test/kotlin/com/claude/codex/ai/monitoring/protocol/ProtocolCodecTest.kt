@@ -47,6 +47,9 @@ class ProtocolCodecTest {
         Message.SessionRemoved("s1", "p1"),
         Message.SessionHistoryResult("s1", listOf(event), hasMore = false),
         Message.TerminalKeyRequest("s1", TerminalKey.SHIFT_TAB),
+        Message.PastSessions("p1"),
+        Message.PastSessionsResult("p1", listOf(PastSessionDto("c1", "Fix the login bug", 9L))),
+        Message.ResumeSession("p1", "c1", "now add tests"),
         Message.TerminalScreen(
             "s1",
             columns = 120,

@@ -27,6 +27,9 @@ import com.claude.codex.ai.monitoring.desktop.server.ClientHandler
 import com.claude.codex.ai.monitoring.desktop.server.ConnectionHub
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.desktop.simulator.DemoSessionSimulator
+import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
+import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
+import com.claude.codex.ai.monitoring.desktop.history.TranscriptStore
 import com.claude.codex.ai.monitoring.desktop.storage.AppStorage
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
@@ -82,7 +85,15 @@ fun main(args: Array<String>) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val wrappers = WrapperHub(registry, scope, projectFor = { projects.projectFor(it)?.projectId })
     control.wrapper = wrappers
-    val hookReceiver = HookReceiver(installer.secret, tracker, audit, control)
+    val headless = HeadlessRunner(registry, scope)
+    control.headless = headless
+    control.resumer = SessionResumer(
+        registry,
+        headless,
+        TranscriptStore(),
+        projectPath = { id -> projects.projects.value.firstOrNull { it.projectId == id }?.let { Path.of(it.path) } },
+    )
+    val hookReceiver = HookReceiver(installer.secret, tracker, audit, control, sessionAlias = headless::sessionIdFor)
     val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter(), control, wrappers)
     val server = AgentServer(
         handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver,

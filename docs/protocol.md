@@ -25,13 +25,16 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | C→D | `send_input` | `sessionId`, `text` *(phase 5)* |
 | C→D | `quick_action` | `sessionId`, `action: APPROVE/DENY/INTERRUPT/CONTINUE` *(phase 5)* |
 | C→D | `away.set` | `enabled` *(addition, phase 5a)* |
+| C→D | `sessions.past` | `projectId` *(addition, phase 6)* |
+| C→D | `session.resume` | `projectId`, `claudeSessionId`, `text` *(phase 6; needs input permission; `ack.detail` = session to open)* |
 | C→D | `terminal.attach` / `terminal.detach` | `sessionId` / – *(phase 5b; one terminal per connection)* |
 | C→D | `terminal.key` | `sessionId`, `key: ENTER/ESCAPE/TAB/SHIFT_TAB/UP/DOWN/CTRL_C/DIGIT_1..3` *(addition, phase 5b; needs input permission)* |
 | C→D | `ping` | – |
 | D→C | `challenge` | `nonce`, `desktopSignature` *(phase 3)* |
 | D→C | `ready` | `computer`, `projects`, `sessions`, `canSendInput`, `awayMode` |
 | D→C | `away.update` | `enabled` *(addition, phase 5a; sent to every connected phone)* |
-| D→C | `session.update` | `session` |
+| D→C | `session.update` | `session` (incl. `claudeSessionId` when it differs from `sessionId`) |
+| D→C | `sessions.past.result` | `projectId`, `sessions[{claudeSessionId, title, lastActiveAt}]` *(addition, phase 6)* |
 | D→C | `session.event` | `sessionId`, `event` |
 | D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |
 | D→C | `session.history.result` | `sessionId`, `events` (oldest first), `hasMore` |
@@ -123,6 +126,25 @@ with an `ack` carrying the request's envelope id.
   its normal prompt on the computer.
 - Registry changes and their `session.update` broadcasts happen under one lock, so phones always end on
   the current state.
+
+## Resume saved conversations (phase 6)
+
+- **History.** `sessions.past` lists a monitored project's saved conversations from Claude Code's transcripts
+  (`~/.claude/projects/<cwd with non-alphanumerics replaced by "-">/<id>.jsonl`, or under `CLAUDE_CONFIG_DIR`;
+  subfolder projects confirmed by the recorded `cwd`, matched case-insensitively). Newest 30, kept 30 days by
+  Claude Code. Only a title is read: the session name (`agent-name`), else Claude's `ai-title`, else the first
+  typed prompt. The format is internal to Claude Code, so it is parsed defensively and nothing else is used.
+- **Resume.** `session.resume` (or `send_input` to an ENDED session) runs
+  `claude -p --resume <id> --output-format stream-json --verbose` in the conversation's folder, with the prompt on
+  **stdin** (never on the command line, so phone text cannot become shell syntax). It uses the owner's normal Claude
+  login and plan limits (not `--bare`, which would need an API key). `--resume` keeps the session id, so the run's
+  hooks report progress as usual; a wrapper terminal's conversation is shown under the wrapper session.
+- A conversation is resumed only while no Claude has it open (ENDED, or a failed phone-started run): two
+  processes on one conversation would interleave its transcript. Otherwise the answer is FAILED with a reason.
+- While a phone-started run works, its permission prompts wait for the phone even with Away mode off; Stop ends
+  the process. Its output is read only to detect an error result and is never stored.
+- **Remove from this phone** is phone-only: the app stores `sessionId → last activity time (computer clock)` and
+  hides the session until the computer reports newer activity. Nothing is sent to the computer.
 
 ## Stop from the phone
 
