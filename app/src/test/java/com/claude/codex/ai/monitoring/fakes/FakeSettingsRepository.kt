@@ -14,4 +14,6 @@ class FakeSettingsRepository(
     override suspend fun setThemeMode(mode: ThemeMode) = settings.update { it.copy(themeMode = mode) }
 
     override suspend fun setHapticsEnabled(enabled: Boolean) = settings.update { it.copy(hapticsEnabled = enabled) }
+
+    override suspend fun setBackgroundAlerts(enabled: Boolean) = settings.update { it.copy(backgroundAlerts = enabled) }
 }

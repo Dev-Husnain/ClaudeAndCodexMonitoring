@@ -5,6 +5,8 @@ import com.claude.codex.ai.monitoring.di.appModule
 import com.claude.codex.ai.monitoring.di.dataModule
 import com.claude.codex.ai.monitoring.di.domainModule
 import com.claude.codex.ai.monitoring.di.presentationModule
+import com.claude.codex.ai.monitoring.service.BackgroundAlertsController
+import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
@@ -15,5 +17,6 @@ class App : Application() {
             androidContext(this@App)
             modules(appModule, dataModule, domainModule, presentationModule)
         }
+        get<BackgroundAlertsController>().start()
     }
 }

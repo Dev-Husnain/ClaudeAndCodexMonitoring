@@ -30,5 +30,6 @@ class SettingsDataSource(context: Context) {
     object Keys {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val HapticsEnabled = booleanPreferencesKey("haptics_enabled")
+        val BackgroundAlerts = booleanPreferencesKey("background_alerts")
     }
 }

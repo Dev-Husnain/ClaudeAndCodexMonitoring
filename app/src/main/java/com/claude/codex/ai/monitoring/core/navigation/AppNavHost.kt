@@ -2,6 +2,8 @@ package com.claude.codex.ai.monitoring.core.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -16,6 +18,7 @@ import com.claude.codex.ai.monitoring.presentation.onboarding.OnboardingScreen
 import com.claude.codex.ai.monitoring.presentation.pair.PairScreen
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.SessionDetailScreen
 import com.claude.codex.ai.monitoring.presentation.settings.SettingsScreen
+import org.koin.compose.koinInject
 
 /**
  * Navigation 3 graph. All back-stack changes happen here; screens only expose callbacks.
@@ -23,9 +26,23 @@ import com.claude.codex.ai.monitoring.presentation.settings.SettingsScreen
  * success screen, so losing pairing (unpair, revoke) resets the stack.
  */
 @Composable
-fun AppNavHost(isPaired: Boolean, modifier: Modifier = Modifier) {
+fun AppNavHost(
+    isPaired: Boolean,
+    modifier: Modifier = Modifier,
+    pendingNavigation: PendingNavigation = koinInject(),
+) {
     val backStack = rememberNavBackStack(if (isPaired) Route.Home else Route.Onboarding)
     val pop: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
+    val sessionToOpen by pendingNavigation.sessionId.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sessionToOpen, isPaired) {
+        val sessionId = sessionToOpen ?: return@LaunchedEffect
+        if (!isPaired) return@LaunchedEffect
+        // Opened from an alert: Home underneath, so Back leads somewhere sensible.
+        backStack.resetTo(Route.Home)
+        backStack.add(Route.SessionDetail(sessionId))
+        pendingNavigation.consume()
+    }
 
     LaunchedEffect(isPaired) {
         val inPairingFlow = backStack.lastOrNull() is Route.Onboarding || backStack.lastOrNull() is Route.Pair

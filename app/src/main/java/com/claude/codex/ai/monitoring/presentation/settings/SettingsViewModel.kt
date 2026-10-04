@@ -24,6 +24,7 @@ class SettingsViewModel(
                     state.copy(
                         themeOptions = state.themeOptions.map { it.copy(selected = it.mode == settings.themeMode) },
                         hapticsEnabled = settings.hapticsEnabled,
+                        backgroundAlerts = settings.backgroundAlerts,
                     )
                 }
             }
@@ -34,6 +35,11 @@ class SettingsViewModel(
         when (event) {
             is SettingsEvent.OnThemeModeSelect -> viewModelScope.launch { settingsRepository.setThemeMode(event.mode) }
             is SettingsEvent.OnHapticsToggle -> viewModelScope.launch { settingsRepository.setHapticsEnabled(event.enabled) }
+            is SettingsEvent.OnBackgroundAlertsToggle -> {
+                if (event.enabled) _settingsUiState.update { it.copy(notificationsBlocked = false) }
+                viewModelScope.launch { settingsRepository.setBackgroundAlerts(event.enabled) }
+            }
+            SettingsEvent.OnNotificationPermissionDenied -> _settingsUiState.update { it.copy(notificationsBlocked = true) }
         }
     }
 }

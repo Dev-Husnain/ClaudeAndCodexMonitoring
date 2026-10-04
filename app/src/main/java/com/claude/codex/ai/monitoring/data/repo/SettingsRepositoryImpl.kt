@@ -19,6 +19,7 @@ class SettingsRepositoryImpl(
                     ?.let { stored -> ThemeMode.entries.firstOrNull { it.name == stored } }
                     ?: ThemeMode.SYSTEM,
                 hapticsEnabled = prefs[SettingsDataSource.Keys.HapticsEnabled] ?: true,
+                backgroundAlerts = prefs[SettingsDataSource.Keys.BackgroundAlerts] ?: false,
             )
         }
         .distinctUntilChanged()
@@ -29,5 +30,9 @@ class SettingsRepositoryImpl(
 
     override suspend fun setHapticsEnabled(enabled: Boolean) {
         dataSource.edit { it[SettingsDataSource.Keys.HapticsEnabled] = enabled }
+    }
+
+    override suspend fun setBackgroundAlerts(enabled: Boolean) {
+        dataSource.edit { it[SettingsDataSource.Keys.BackgroundAlerts] = enabled }
     }
 }

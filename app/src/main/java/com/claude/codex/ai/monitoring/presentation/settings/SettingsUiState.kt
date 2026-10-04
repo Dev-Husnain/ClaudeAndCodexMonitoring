@@ -10,6 +10,10 @@ data class SettingsUiState(
     val themeOptions: List<ThemeOptionUiModel> = ThemeMode.entries.map { ThemeOptionUiModel(it, it.labelRes(), it == ThemeMode.SYSTEM) },
     val hapticsEnabled: Boolean = true,
     val appVersion: String = "",
+    /** Alerts when the app is closed (foreground service). */
+    val backgroundAlerts: Boolean = false,
+    /** The user refused notifications: alerts cannot be shown until allowed in Android settings. */
+    val notificationsBlocked: Boolean = false,
 )
 
 @Immutable

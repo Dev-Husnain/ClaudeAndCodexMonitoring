@@ -179,6 +179,22 @@ DataStore. It is covered by the manual gate above.
 - [x] **Verified on the Xiaomi:** wrapper session stopped mid-story (story.txt never written); a plain `claude -p`
   session stopped at step 14 of 25 and exited
 
+### Feature: Alerts when the app is closed (M7, spec phase 7 option A)
+- [x] Setting "Alerts when the app is closed" (off by default); POST_NOTIFICATIONS asked on Android 13+, with an
+  explanation and a shortcut to the app's system page (battery, Xiaomi Autostart) if refused
+- [x] `AgentMonitorService`: foreground service type `connectedDevice` (+ CHANGE_NETWORK_STATE) that keeps the shared
+  connection open; quiet ongoing notification with connection status, "N sessions need you" and **Turn off**
+- [x] `DetectSessionAlertsUseCase`: alert once when a session starts needing the user or errors, again only when the
+  reason changes, cleared when answered; nothing replayed on start; skipped while the app is visible
+- [x] Alerts contain only the project name and the reason; the lock screen shows "Claude needs you" only; tapping
+  opens the session (`PendingNavigation`)
+- [x] `BackgroundAlertsController` starts the service whenever the app is visible (Android forbids starting it from the
+  background) and stops it when alerts are turned off or the phone is unpaired
+- [x] Tests: alert detection (4), settings toggle (2); 133 tests in total (app 55, shared 14, desktop 59, cli 5)
+- [x] **Verified on the Xiaomi (Android 12):** service in the foreground, alert "Claude wants your permission" while the
+  app was in the background and again after swiping it out of recents, tap opened the session, Approve wrote the
+  file, the alert cleared itself when the session was released
+
 ## 6. Screen ↔ Design Map
 | Screen | Orientation | Design ref | Implementation path | Status |
 |---|---|---|---|---|
@@ -208,7 +224,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 | M5a Control via hooks (Away mode) | Done, gate verified on a real phone |
 | M5b Wrapper (`agentmon claude`) + terminal mirror | Done, gate verified on a real phone (plus Stop from the phone) |
 | M6 Headless resume | Not started |
-| M7 Notifications (foreground service) | Not started |
+| M7 Notifications (foreground service) | Done, verified on a real phone |
 | M8 Hardening + QA | Not started |
 
 ## 9. Decisions & Assumptions
@@ -244,6 +260,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D23** Stop uses the strongest mechanism available per session: a held hook's own decision, Esc in a wrapper's
   terminal, otherwise `continue: false` on the next hook. Hooks cannot interrupt Claude between tool calls, so
   plain sessions stop at their next step, not instantly.
+- **D24** The background service uses type `connectedDevice` (a network link to the user's own computer, with
+  CHANGE_NETWORK_STATE): `dataSync` is limited to 6 h a day on Android 15, and `specialUse` needs Play review.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.
@@ -261,6 +279,9 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - After an Esc stop, Claude restores the interrupted prompt into its input box; a phone message typed next is
   appended to it. Clearing the input first (e.g. Ctrl+U) is not verified yet.
 - The terminal font lacks a few symbols Claude uses (e.g. `⏵⏵` in the status line), shown as boxes.
+- Background alerts do not start by themselves after a phone reboot; opening the app once starts them again.
+- Seen once: the phone's DNS returned a Cloudflare address (188.114.97.6) that this ISP could not reach, so the app
+  showed Offline for a few minutes until DNS changed. Nothing in the app can fix that; it recovered on its own.
 - Codex is not supported yet (spec: `CodexAdapter` later); everything here targets Claude Code.
 - The desktop checks the tunnel before showing a pairing code and falls back to USB when it is unreachable.
 - The desktop agent does not start with Windows yet (run `scripts\start-agent.cmd`); the tunnel service does. Packaging and auto-start are M8.

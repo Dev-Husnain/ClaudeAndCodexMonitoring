@@ -225,4 +225,31 @@
     <string name="detail_stop_confirm">Stop</string>
     <string name="delivery_stop_sent">Stop sent to Claude</string>
     <string name="delivery_stop_queued">Claude stops at its next step</string>
+
+    <!-- Background alerts (M7) -->
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_background_alerts">Alerts when the app is closed</string>
+    <string name="settings_background_alerts_summary">Stays connected to your computer and tells you when Claude needs you. Shows a small permanent notification.</string>
+    <string name="settings_notifications_blocked">Notifications are off for AgentMon. Allow them in Android settings to get alerts.</string>
+    <string name="settings_battery">Battery &amp; background</string>
+    <string name="settings_battery_summary">Allow AgentMon to run in the background (on Xiaomi: Battery saver: No restrictions, and Autostart)</string>
+    <string name="channel_connection_name">Connection</string>
+    <string name="channel_connection_description">Keeps AgentMon connected to your computer while the app is closed</string>
+    <string name="channel_alerts_name">Claude needs you</string>
+    <string name="channel_alerts_description">When a session waits for you or stops with an error</string>
+    <string name="notif_connected">Connected to %1$s</string>
+    <string name="notif_connecting">Connecting to your computer…</string>
+    <string name="notif_offline">Can\'t reach %1$s</string>
+    <string name="notif_unauthorized">This phone is no longer paired</string>
+    <string name="notif_alerts_on">You\'ll be alerted when Claude needs you</string>
+    <plurals name="notif_sessions_waiting">
+        <item quantity="one">%d session needs you</item>
+        <item quantity="other">%d sessions need you</item>
+    </plurals>
+    <string name="notif_turn_off">Turn off</string>
+    <string name="alert_permission_title">Claude wants your permission</string>
+    <string name="alert_reply_title">Claude finished: what next?</string>
+    <string name="alert_input_title">Claude is waiting at your computer</string>
+    <string name="alert_error_title">Claude stopped with an error</string>
+    <string name="alert_public_title">Claude needs you</string>
 </resources>

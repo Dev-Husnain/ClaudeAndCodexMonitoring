@@ -22,7 +22,10 @@ fun SettingsSection(
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
         SectionHeader(title = title)
-        SurfaceCard(modifier = Modifier.fillMaxWidth(), content = content)
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            // Several rows in one card need air between them.
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceLg), content = content)
+        }
     }
 }
 

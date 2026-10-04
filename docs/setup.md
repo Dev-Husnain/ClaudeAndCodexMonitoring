@@ -121,5 +121,12 @@ Phase 3 (pairing and authentication) is done, so only approved phones can use th
   both tabs). Sessions started with `agentmon claude` stop at once; others stop at Claude's next step (its
   next tool call). After a stop in the terminal, Claude puts your interrupted prompt back into its input box;
   check the Terminal tab before typing the next message.
-- **Phase 7 (notifications):** allow notifications for AgentMon, and turn off battery optimisation for it
-  (Settings → Apps → AgentMon → Battery → Unrestricted; Xiaomi/MIUI also needs *Autostart*).
+- **Phase 7: alerts when the app is closed.**
+  1. In AgentMon open **Settings → Notifications → Alerts when the app is closed** and turn it on (Android 13+
+     asks to allow notifications). A quiet permanent notification "Connected to <computer>" appears; it has a
+     **Turn off** button.
+  2. Tap **Battery & background** right below it and allow AgentMon to run in the background. On Xiaomi/MIUI:
+     Battery saver → *No restrictions*, and turn on *Autostart*. Other phones: Battery → *Unrestricted*.
+  3. When a session needs you (permission, finished in Away mode, waiting, error) you get an alert with only
+     the project name. Tapping it opens that session. The alert disappears once the session is answered.
+  4. After the phone restarts, open AgentMon once to start the background connection again.
