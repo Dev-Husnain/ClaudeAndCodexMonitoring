@@ -210,6 +210,18 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Feature: Markdown replies + complete removal
+- [x] Claude's replies render as Markdown on the phone (own parser in `core/utils/Markdown.kt`, no library: current
+  Markdown libraries need Kotlin > 2.2): headings, lists, quotes, fenced code and tables (scroll sideways), links
+  (http/https only), inline bold/italic/code/strike; selectable. Used for the latest reply on the detail screen and
+  the Away-mode reply card. Cards and timeline show plain previews (`stripMarkdown`); commands stay as typed
+- [x] The computer now keeps Claude's full last reply (up to 2,000 characters) instead of its first line
+- [x] Removing a session also hides its conversation in History (by Claude's id, with 5 min slack for the transcript
+  being written after the last event) and, when it was the project's last one, the project heading
+- [x] Projects without live sessions get a "Remove" action; a removed project returns with the next session there
+- [x] Tests: Markdown parser (4), removal of session + conversation + project (2 VM, 1 overview); suites and lint pass
+- [x] Real test: removed "Agentmon Hooktest" from the phone; it disappeared
+
 ### Feature: Resume any saved conversation + remove from phone (M6, spec phase 6)
 - [x] Checked the docs first (reported to the owner): `claude -p --resume <id>` uses the normal subscription login and
   plan limits (no API key; only `--bare` would need one), keeps the session id (`--fork-session` would not), and runs

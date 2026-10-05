@@ -7,6 +7,7 @@ import com.claude.codex.ai.monitoring.core.utils.ticks
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
 import com.claude.codex.ai.monitoring.domain.repo.PairingRepository
+import com.claude.codex.ai.monitoring.domain.repo.projectKey
 import com.claude.codex.ai.monitoring.domain.usecase.ObserveSessionOverviewUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +31,7 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(observeSessionOverview(), pairingRepository.pairing, clock.ticks()) { overview, pairing, now ->
                 overview.toHomeUiState(now, pairing?.computerName)
-            }.collect { state -> _homeUiState.update { state.copy(awayBusy = it.awayBusy, removeTarget = it.removeTarget) } }
+            }.collect { state -> _homeUiState.update { state.copy(awayBusy = it.awayBusy, removeTarget = it.removeTarget, removeProjectTarget = it.removeProjectTarget) } }
         }
     }
 
@@ -50,11 +51,29 @@ class HomeViewModel(
                 val session = (state.needsYou + state.projects.flatMap { it.sessions }).firstOrNull { it.sessionId == event.sessionId }
                 state.copy(removeTarget = session?.takeIf { it.removable })
             }
-            HomeEvent.OnRemoveDismiss -> _homeUiState.update { it.copy(removeTarget = null) }
+            HomeEvent.OnRemoveDismiss -> _homeUiState.update { it.copy(removeTarget = null, removeProjectTarget = null) }
+            is HomeEvent.OnRemoveProjectRequest -> _homeUiState.update { state ->
+                state.copy(removeProjectTarget = state.projects.firstOrNull { it.projectId == event.projectId && it.sessions.isEmpty() })
+            }
+            HomeEvent.OnRemoveProjectConfirm -> {
+                val target = _homeUiState.value.removeProjectTarget ?: return
+                _homeUiState.update { it.copy(removeProjectTarget = null) }
+                viewModelScope.launch { hiddenSessionsRepository.hide(projectKey(target.projectId), target.lastActivityMs) }
+            }
             HomeEvent.OnRemoveConfirm -> {
-                val target = _homeUiState.value.removeTarget ?: return
+                val state = _homeUiState.value
+                val target = state.removeTarget ?: return
                 _homeUiState.update { it.copy(removeTarget = null) }
-                viewModelScope.launch { hiddenSessionsRepository.hide(target.sessionId, target.lastActivityMs) }
+                // Everything that belongs to it goes: its conversation in History and, if it was the project's
+                // last session on the list, the project heading too (it comes back with the next session there).
+                val lastInProject = state.projects.firstOrNull { it.projectId == target.projectId }?.sessions?.all { it.sessionId == target.sessionId } == true &&
+                    state.needsYou.none { it.projectId == target.projectId }
+                val ids = listOfNotNull(
+                    target.sessionId,
+                    target.claudeSessionId,
+                    projectKey(target.projectId).takeIf { lastInProject && target.projectId.isNotEmpty() },
+                )
+                viewModelScope.launch { hiddenSessionsRepository.hide(ids, target.lastActivityMs) }
             }
         }
     }

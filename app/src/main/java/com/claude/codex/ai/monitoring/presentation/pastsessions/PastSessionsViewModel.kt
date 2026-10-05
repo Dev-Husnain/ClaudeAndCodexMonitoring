@@ -12,6 +12,7 @@ import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
+import com.claude.codex.ai.monitoring.domain.repo.TRANSCRIPT_SLACK_MS
 import com.claude.codex.ai.monitoring.domain.repo.hides
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.toNote
 import kotlinx.coroutines.channels.Channel
@@ -51,7 +52,7 @@ class PastSessionsViewModel(
                     .flatMap { session -> listOfNotNull(session.sessionId, session.claudeSessionId).map { it to session.sessionId } }
                     .toMap()
                 val items = list.orEmpty()
-                    .filterNot { hidden.hides(it.claudeSessionId, it.lastActiveAtMs) }
+                    .filterNot { hidden.hides(it.claudeSessionId, it.lastActiveAtMs, TRANSCRIPT_SLACK_MS) }
                     .map { session ->
                         PastSessionItemUiModel(
                             claudeSessionId = session.claudeSessionId,

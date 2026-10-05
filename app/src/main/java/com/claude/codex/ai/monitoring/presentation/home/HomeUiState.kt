@@ -30,6 +30,8 @@ data class HomeUiState(
     val projects: List<ProjectSectionUiModel> = emptyList(),
     /** Asking whether to remove this session from the phone's list. */
     val removeTarget: SessionItemUiModel? = null,
+    /** A project without sessions the user is about to remove from this phone. */
+    val removeProjectTarget: ProjectSectionUiModel? = null,
 )
 
 @Immutable
@@ -41,6 +43,9 @@ data class UnauthorizedUiModel(
 @Immutable
 data class SessionItemUiModel(
     val sessionId: String,
+    val projectId: String = "",
+    /** Claude's id for the conversation, when it differs from [sessionId]; removed from History with it. */
+    val claudeSessionId: String? = null,
     /** Null when the computer has not named the project; the card then shows a generic name. */
     val projectName: String?,
     /** What the conversation is about, shown under the project name. */
@@ -62,4 +67,6 @@ data class ProjectSectionUiModel(
     val projectId: String,
     val name: String,
     val sessions: List<SessionItemUiModel>,
+    /** Newest activity there; removing the project hides it until something newer happens. */
+    val lastActivityMs: Long = 0L,
 )

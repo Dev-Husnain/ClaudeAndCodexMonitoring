@@ -10,5 +10,5 @@ class HiddenSessionsRepositoryImpl(
 ) : HiddenSessionsRepository {
     override val hidden: Flow<Map<String, Long>> = dataSource.hidden.distinctUntilChanged()
 
-    override suspend fun hide(sessionId: String, atMs: Long) = dataSource.hide(sessionId, atMs)
+    override suspend fun hide(ids: Collection<String>, atMs: Long) = dataSource.hide(ids, atMs)
 }

@@ -69,7 +69,7 @@ object SessionStateMachine {
                 else -> null
             }
             "Stop" -> Transition(
-                base.copy(state = SessionState.IDLE, lastEventAt = nowMs, lastMessageSnippet = hook.lastAssistantMessage?.oneLine() ?: base.lastMessageSnippet),
+                base.copy(state = SessionState.IDLE, lastEventAt = nowMs, lastMessageSnippet = hook.lastAssistantMessage?.trim()?.ifEmpty { null } ?: base.lastMessageSnippet),
                 event(EventKind.STOP, "Finished", hook.lastAssistantMessage),
             )
             "StopFailure" -> {

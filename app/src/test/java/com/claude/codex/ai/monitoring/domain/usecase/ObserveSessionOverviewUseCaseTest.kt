@@ -45,6 +45,22 @@ class ObserveSessionOverviewUseCaseTest {
     }
 
     @Test
+    fun `a project whose last session was removed disappears until a new session starts there`() = runTest {
+        val repository = FakeAgentRepository(
+            AgentSnapshotModel(
+                projects = listOf(ProjectModel("p1", "Alpha"), ProjectModel("p2", "Beta")),
+                sessions = listOf(sessionModel("s1", projectId = "p2", status = SessionStatus.ENDED, lastEventAtMs = 100)),
+                hasSnapshot = true,
+            ),
+        )
+        hidden.hide(listOf("s1", "project:p2"), atMs = 100)
+        assertEquals(listOf("Alpha"), ObserveSessionOverviewUseCase(repository, hidden)().first().projects.map { it.project.name })
+
+        repository.snapshot.value = repository.snapshot.value.copy(sessions = listOf(sessionModel("s2", projectId = "p2", lastEventAtMs = 300)))
+        assertEquals(listOf("Beta", "Alpha"), ObserveSessionOverviewUseCase(repository, hidden)().first().projects.map { it.project.name })
+    }
+
+    @Test
     fun `waiting sessions are pinned and others grouped by most recent project`() = runTest {
         val repository = FakeAgentRepository(
             AgentSnapshotModel(

@@ -14,4 +14,9 @@ sealed interface HomeEvent {
     data object OnRemoveConfirm : HomeEvent
 
     data object OnRemoveDismiss : HomeEvent
+
+    /** "Remove" on a project that has no live sessions. */
+    data class OnRemoveProjectRequest(val projectId: String) : HomeEvent
+
+    data object OnRemoveProjectConfirm : HomeEvent
 }

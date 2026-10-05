@@ -23,9 +23,9 @@ class HiddenSessionsDataSource(context: Context) {
         .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
         .map { prefs -> prefs[Entries].orEmpty().mapNotNull(::parse).toMap() }
 
-    suspend fun hide(sessionId: String, atMs: Long) {
+    suspend fun hide(ids: Collection<String>, atMs: Long) {
         dataStore.edit { prefs ->
-            val entries = prefs[Entries].orEmpty().mapNotNull(::parse).toMap() + (sessionId to atMs)
+            val entries = prefs[Entries].orEmpty().mapNotNull(::parse).toMap() + ids.associateWith { atMs }
             prefs[Entries] = entries.entries
                 .sortedByDescending { it.value }
                 .take(MAX_ENTRIES)

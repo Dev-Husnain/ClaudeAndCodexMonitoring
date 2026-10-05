@@ -15,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.AppTheme
 import com.claude.codex.ai.monitoring.core.theme.Dimens
+import com.claude.codex.ai.monitoring.core.ui.MarkdownText
 import com.claude.codex.ai.monitoring.core.theme.MonoTextStyle
 import com.claude.codex.ai.monitoring.core.ui.GradientButton
 import com.claude.codex.ai.monitoring.core.ui.QuickActionChip
@@ -45,12 +46,15 @@ fun AwaitingCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        if (awaiting.detail != null) {
+        if (awaiting.detail != null && !awaiting.isPermission) {
+            // Claude's question or answer: read in full before replying.
+            MarkdownText(markdown = awaiting.detail, modifier = Modifier.padding(top = Dimens.SpaceMd))
+        } else if (awaiting.detail != null) {
             Text(
                 text = awaiting.detail,
-                style = if (awaiting.isPermission) MonoTextStyle else MaterialTheme.typography.bodyMedium,
+                style = MonoTextStyle,
                 color = colors.textPrimary,
-                maxLines = if (awaiting.isPermission) 4 else 3,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = Dimens.SpaceMd),
             )

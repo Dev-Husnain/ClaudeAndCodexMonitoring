@@ -66,8 +66,49 @@ class HomeViewModelTest {
         vm.onEvent(HomeEvent.OnRemoveConfirm)
         runCurrent()
         // Stored with the computer's activity time, so a clock difference cannot undo the removal.
+        // The project keeps another session, so only this one goes.
         assertEquals(mapOf("done" to 500L), hidden.hidden.value)
         assertEquals(listOf("busy"), vm.homeUiState.value.projects.single().sessions.map { it.sessionId })
+    }
+
+    @Test
+    fun `removing a project's last session also removes its conversation from History and the project heading`() {
+        repository.snapshot.value = AgentSnapshotModel(
+            connection = ConnectionStatus.Connected(1),
+            projects = listOf(ProjectModel("p1", "Alpha"), ProjectModel("p2", "Beta")),
+            sessions = listOf(
+                sessionModel("wrapper-1", projectId = "p2", status = SessionStatus.ENDED, lastEventAtMs = 700).copy(claudeSessionId = "c-1"),
+                sessionModel("busy"),
+            ),
+            hasSnapshot = true,
+        )
+        val vm = viewModel()
+        runCurrent()
+
+        vm.onEvent(HomeEvent.OnRemoveRequest("wrapper-1"))
+        vm.onEvent(HomeEvent.OnRemoveConfirm)
+        runCurrent()
+        assertEquals(mapOf("wrapper-1" to 700L, "c-1" to 700L, "project:p2" to 700L), hidden.hidden.value)
+        assertEquals(listOf("Alpha"), vm.homeUiState.value.projects.map { it.name })
+    }
+
+    @Test
+    fun `a project without live sessions can be removed from the phone`() {
+        repository.snapshot.value = AgentSnapshotModel(
+            connection = ConnectionStatus.Connected(1),
+            projects = listOf(ProjectModel("p1", "Alpha"), ProjectModel("p2", "Beta")),
+            sessions = listOf(sessionModel("busy")),
+            hasSnapshot = true,
+        )
+        val vm = viewModel()
+        runCurrent()
+
+        vm.onEvent(HomeEvent.OnRemoveProjectRequest("p1"))
+        assertEquals(null, vm.homeUiState.value.removeProjectTarget, "a project with a live session stays")
+        vm.onEvent(HomeEvent.OnRemoveProjectRequest("p2"))
+        vm.onEvent(HomeEvent.OnRemoveProjectConfirm)
+        runCurrent()
+        assertEquals(listOf("Alpha"), vm.homeUiState.value.projects.map { it.name })
     }
 
     @Test

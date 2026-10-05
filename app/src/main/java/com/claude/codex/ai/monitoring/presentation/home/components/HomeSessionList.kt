@@ -2,6 +2,7 @@ package com.claude.codex.ai.monitoring.presentation.home.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,9 +10,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +39,7 @@ fun HomeSessionList(
     modifier: Modifier = Modifier,
     onSessionLongClick: (String) -> Unit = {},
     onHistoryClick: (projectId: String, projectName: String) -> Unit = { _, _ -> },
+    onRemoveProjectClick: (projectId: String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     // "Needs you" is inserted above what is on screen, where the scroll anchor would hide it.
@@ -86,12 +90,17 @@ fun HomeSessionList(
             }
             if (project.sessions.isEmpty()) {
                 item(key = "project-empty-${project.projectId}", contentType = "hint") {
-                    Text(
-                        text = stringResource(R.string.home_project_no_sessions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppTheme.colors.textSecondary,
-                        modifier = Modifier.animateItem(),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.animateItem()) {
+                        Text(
+                            text = stringResource(R.string.home_project_no_sessions),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppTheme.colors.textSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { onRemoveProjectClick(project.projectId) }) {
+                            Text(text = stringResource(R.string.remove_project_action), color = AppTheme.colors.textSecondary)
+                        }
+                    }
                 }
             }
             items(project.sessions, key = { it.sessionId }, contentType = { "session" }) { session ->

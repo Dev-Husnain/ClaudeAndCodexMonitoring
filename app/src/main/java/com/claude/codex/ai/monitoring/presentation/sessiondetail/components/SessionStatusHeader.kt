@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.AppTheme
 import com.claude.codex.ai.monitoring.core.theme.Dimens
+import com.claude.codex.ai.monitoring.core.ui.MarkdownText
 import com.claude.codex.ai.monitoring.core.theme.MonoTextStyle
 import com.claude.codex.ai.monitoring.core.ui.StatusOrb
 import com.claude.codex.ai.monitoring.core.ui.StatusPill
@@ -64,10 +65,9 @@ fun SessionStatusHeader(
             }
         }
         if (header.message != null) {
-            Text(
-                text = header.message,
+            MarkdownText(
+                markdown = header.message,
                 style = MaterialTheme.typography.bodyLarge,
-                color = AppTheme.colors.textPrimary,
                 modifier = Modifier.padding(top = Dimens.SpaceLg),
             )
         }

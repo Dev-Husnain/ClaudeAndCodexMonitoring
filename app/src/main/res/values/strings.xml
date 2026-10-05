@@ -274,4 +274,7 @@
     <string name="remove_session_title">Remove from this phone?</string>
     <string name="remove_session_message">It disappears from this phone\'s list only. Nothing changes on your computer, and it comes back if Claude works in it again.</string>
     <string name="remove_session_confirm">Remove from this phone</string>
+    <string name="remove_project_action">Remove</string>
+    <string name="remove_project_title">Remove %1$s from this phone?</string>
+    <string name="remove_project_message">The project and its saved conversations disappear from this phone. Nothing changes on your computer, and it comes back when Claude starts a new session there.</string>
 </resources>

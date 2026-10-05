@@ -2,6 +2,7 @@ package com.claude.codex.ai.monitoring.presentation.home
 
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.utils.UiText
+import com.claude.codex.ai.monitoring.core.utils.stripMarkdown
 import com.claude.codex.ai.monitoring.core.utils.toRelativeTime
 import com.claude.codex.ai.monitoring.domain.models.AuthProblem
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
@@ -58,6 +59,7 @@ fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?)
                 projectId = group.project.projectId,
                 name = group.project.name,
                 sessions = group.sessions.map { it.toItemUiModel(projectNames, nowMs) },
+                lastActivityMs = group.lastActivityMs,
             )
         },
     )
@@ -65,11 +67,13 @@ fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?)
 
 private fun SessionModel.toItemUiModel(projectNames: Map<String, String>, nowMs: Long) = SessionItemUiModel(
     sessionId = sessionId,
+    projectId = projectId,
+    claudeSessionId = claudeSessionId,
     projectName = projectNames[projectId],
     topic = title,
     tone = status.toTone(),
     statusLabel = status.toLabel(),
-    snippet = errorInfo ?: lastMessageSnippet,
+    snippet = errorInfo ?: lastMessageSnippet?.stripMarkdown()?.ifBlank { null },
     lastTool = lastTool?.let { UiText.Res(R.string.home_last_tool, listOf(it)) },
     relativeTime = lastEventAtMs.toRelativeTime(nowMs),
     isMonitorOnly = control == SessionControl.MONITOR_ONLY,

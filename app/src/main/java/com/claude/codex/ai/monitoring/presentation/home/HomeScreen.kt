@@ -47,6 +47,18 @@ fun HomeScreen(
         )
     }
 
+    state.removeProjectTarget?.let { project ->
+        ConfirmDialog(
+            title = stringResource(R.string.remove_project_title, project.name),
+            message = stringResource(R.string.remove_project_message),
+            confirmLabel = stringResource(R.string.remove_session_confirm),
+            dismissLabel = stringResource(R.string.action_cancel),
+            onConfirm = { viewModel.onEvent(HomeEvent.OnRemoveProjectConfirm) },
+            onDismiss = { viewModel.onEvent(HomeEvent.OnRemoveDismiss) },
+            destructive = true,
+        )
+    }
+
     AuroraBackground(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -105,6 +117,7 @@ fun HomeScreen(
                     onSessionClick = onSessionClick,
                     onSessionLongClick = { viewModel.onEvent(HomeEvent.OnRemoveRequest(it)) },
                     onHistoryClick = onHistoryClick,
+                    onRemoveProjectClick = { viewModel.onEvent(HomeEvent.OnRemoveProjectRequest(it)) },
                 )
             }
         }

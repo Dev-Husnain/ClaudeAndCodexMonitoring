@@ -8,6 +8,7 @@ import com.claude.codex.ai.monitoring.domain.models.SessionStatus
 import com.claude.codex.ai.monitoring.domain.repo.AgentRepository
 import com.claude.codex.ai.monitoring.domain.repo.HiddenSessionsRepository
 import com.claude.codex.ai.monitoring.domain.repo.hides
+import com.claude.codex.ai.monitoring.domain.repo.projectKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -29,6 +30,7 @@ class ObserveSessionOverviewUseCase(
 
     private fun AgentSnapshotModel.toOverview(hidden: Map<String, Long>): SessionOverviewModel {
         val projectsById = projects.associateBy { it.projectId }
+        val latestByProject = sessions.groupBy { it.projectId }.mapValues { (_, list) -> list.maxOf { it.lastEventAtMs } }
         val (needsYou, others) = sessions
             // Removed from this phone, unless Claude worked in it since.
             .filterNot { hidden.hides(it.sessionId, it.lastEventAtMs) }
@@ -40,12 +42,15 @@ class ObserveSessionOverviewUseCase(
                 ProjectSessionsModel(
                     project = projectsById[projectId] ?: ProjectModel(projectId, projectId),
                     sessions = sessions,
+                    lastActivityMs = latestByProject[projectId] ?: 0L,
                 )
             }
             .sortedByDescending { group -> group.sessions.first().lastEventAtMs }
             .plus(
+                // Projects without sessions keep their History link, unless the user removed the project's last session.
                 projects.filter { project -> others.none { it.projectId == project.projectId } }
-                    .map { ProjectSessionsModel(project = it, sessions = emptyList()) },
+                    .filterNot { project -> hidden.hides(projectKey(project.projectId), latestByProject[project.projectId] ?: 0L) }
+                    .map { ProjectSessionsModel(project = it, sessions = emptyList(), lastActivityMs = latestByProject[it.projectId] ?: 0L) },
             )
         return SessionOverviewModel(
             connection = connection,

@@ -3,6 +3,7 @@ package com.claude.codex.ai.monitoring.presentation.sessiondetail
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.UiText
+import com.claude.codex.ai.monitoring.core.utils.stripMarkdown
 import com.claude.codex.ai.monitoring.core.utils.toRelativeTime
 import com.claude.codex.ai.monitoring.domain.models.AwaitingKind
 import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
@@ -17,6 +18,7 @@ import com.claude.codex.ai.monitoring.presentation.common.toLabel
 import com.claude.codex.ai.monitoring.presentation.common.toTone
 import com.claude.codex.ai.monitoring.presentation.common.toUiModel
 
+private val PROSE = setOf(TimelineEventKind.STOP, TimelineEventKind.MESSAGE, TimelineEventKind.NOTIFICATION, TimelineEventKind.PROMPT)
 private val STOPPABLE = setOf(SessionStatus.RUNNING, SessionStatus.WAITING_INPUT, SessionStatus.STALE)
 
 fun SessionDetailModel.toUiState(nowMs: Long): SessionDetailUiState {
@@ -105,6 +107,7 @@ private fun TimelineEventModel.toItem(nowMs: Long) = TimelineItemUiModel(
         TimelineEventKind.SESSION_START, TimelineEventKind.PROMPT, TimelineEventKind.MESSAGE -> StatusTone.BRAND
     },
     title = title,
-    detail = detail,
+    // Claude's own words are Markdown; commands and tool details stay as typed.
+    detail = if (kind in PROSE) detail?.stripMarkdown()?.ifBlank { null } else detail,
     time = timestampMs.toRelativeTime(nowMs),
 )
