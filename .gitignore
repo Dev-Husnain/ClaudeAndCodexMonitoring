@@ -26,3 +26,5 @@ captures/
 /.agentmon/
 # AgentMon hook secret (Claude Code local settings)
 .claude/settings.local.json
+# Release packages (scripts/package-release.ps1)
+/dist/

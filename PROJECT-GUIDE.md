@@ -210,6 +210,17 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Feature: Release packaging + README
+- [x] `README.md`: install, pairing, daily use (incl. Android Studio terminal), tunnel, phone and desktop guides,
+  security, troubleshooting, build and release steps
+- [x] `scripts/package-release.ps1` → `dist/`: `AgentMon-<v>-windows-x64.zip` (`AgentMon\AgentMon.exe` and
+  `cligentmon.exe`, jpackage app-images with a jlink-trimmed runtime, ~136 MB zipped) and the debug-signed APK.
+  Needs a JDK with jpackage (`JPACKAGE_JDK`); the wrapper lives in `cli\` because Windows folder names ignore case
+- [x] "Start with Windows" also registers the packaged `AgentMon.exe` (`jpackage.app-path`)
+- [x] `AGENTMON_PUBLIC_URL` sets the tunnel address for other owners (besides `--public-url`)
+- [x] Real test: the packaged agent answered `/health`, the packaged wrapper ran `claude --version` through ConPTY
+- [ ] Owner: upload the two files to a GitHub release (no `gh` CLI on this PC); a store APK needs an owner signing key
+
 ### Feature: Markdown replies + complete removal
 - [x] Claude's replies render as Markdown on the phone (own parser in `core/utils/Markdown.kt`, no library: current
   Markdown libraries need Kotlin > 2.2): headings, lists, quotes, fenced code and tables (scroll sideways), links
@@ -328,7 +339,7 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D26** "Delete" is phone-only (owner's choice): hidden ids live in a local DataStore with the computer's activity
   time; transcripts on the computer are never touched.
 - **D27** Resuming is refused while any Claude has the conversation open (two writers would interleave the transcript).
-- **D28** No new JDK was installed for packaging; the agent is "installed" as jars + `javaw` so it can start with
+- **D28** (Superseded for releases by the JDK 24 jpackage app-images.) No new JDK was installed for packaging; the agent is "installed" as jars + `javaw` so it can start with
   Windows today. A real MSI needs `jpackage` (owner decision).
 - **D29** Session topics are prompt text, so they travel like snippets (to granted phones only) but are left out of
   alerts, and are never stored on the computer beyond the in-memory session.

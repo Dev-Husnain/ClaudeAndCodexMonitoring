@@ -67,7 +67,9 @@ fun main(args: Array<String>) {
     val demoMode = "--demo" in args
     // Started with Windows: stay in the tray until opened.
     val startHidden = "--background" in args
-    val publicUrl = arg("public-url") ?: "https://${ProtocolConstants.PUBLIC_HOST}"
+    // Your own tunnel address: --public-url, or the AGENTMON_PUBLIC_URL environment variable.
+    val publicUrl = arg("public-url") ?: System.getenv("AGENTMON_PUBLIC_URL")?.trim()?.trimEnd('/')?.ifEmpty { null }
+        ?: "https://${ProtocolConstants.PUBLIC_HOST}"
     val computerName = System.getenv("COMPUTERNAME")
         ?: runCatching { InetAddress.getLocalHost().hostName }.getOrNull()
         ?: "This computer"

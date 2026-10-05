@@ -25,7 +25,7 @@ interface RunKey {
  */
 class AutoStart(
     private val runKey: RunKey = WindowsRunKey(),
-    private val currentLaunch: () -> InstalledLaunch? = InstalledLaunch::current,
+    private val currentLaunch: () -> Launch? = { PackagedLaunch.current() ?: InstalledLaunch.current() },
     private val isWindows: Boolean = System.getProperty("os.name").startsWith("Windows", ignoreCase = true),
 ) {
     val supported: Boolean get() = isWindows
@@ -35,7 +35,7 @@ class AutoStart(
     fun enable() {
         if (!isWindows) throw AutoStartException("Starting with the computer is only available on Windows")
         val launch = currentLaunch()
-            ?: throw AutoStartException("Install the agent first: run scripts\\install-agent.cmd, then start it from there")
+            ?: throw AutoStartException("Start AgentMon from AgentMon.exe, or install it first (scripts\\install-agent.cmd), not from Gradle")
         runCatching { runKey.set(launch.commandLine()) }
             .onFailure { throw AutoStartException("Windows refused the change: ${it.message.orEmpty().take(200)}") }
     }
@@ -46,9 +46,27 @@ class AutoStart(
             .onFailure { throw AutoStartException("Windows refused the change: ${it.message.orEmpty().take(200)}") }
     }
 
+    /** How Windows should start this copy of the agent at sign-in. */
+    interface Launch {
+        fun commandLine(): String
+    }
+
+    /** The packaged app (`AgentMon.exe` from a release), which carries its own Java. */
+    data class PackagedLaunch(val exe: Path) : Launch {
+        override fun commandLine(): String = "\"$exe\" --background"
+
+        companion object {
+            /** Set by the jpackage launcher to the running `.exe`. */
+            fun current(): PackagedLaunch? = System.getProperty("jpackage.app-path")
+                ?.let { runCatching { Path.of(it) }.getOrNull() }
+                ?.takeIf { it.exists() }
+                ?.let(::PackagedLaunch)
+        }
+    }
+
     /** The installed agent: the jars in its `lib` folder, started with this Java. */
-    data class InstalledLaunch(val javaw: Path, val libDir: Path) {
-        fun commandLine(): String = "\"$javaw\" --enable-native-access=ALL-UNNAMED -cp \"$libDir\\*\" $MAIN_CLASS --background"
+    data class InstalledLaunch(val javaw: Path, val libDir: Path) : Launch {
+        override fun commandLine(): String = "\"$javaw\" --enable-native-access=ALL-UNNAMED -cp \"$libDir\\*\" $MAIN_CLASS --background"
 
         companion object {
             /** Set when this process runs from an installed copy (the jar holding this class sits in `lib`). */

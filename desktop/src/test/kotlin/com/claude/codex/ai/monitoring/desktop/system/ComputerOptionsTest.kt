@@ -63,9 +63,17 @@ class ComputerOptionsTest {
     }
 
     @Test
+    fun `the packaged app registers its own exe`() {
+        val key = FakeRunKey()
+        val exe = AutoStart.PackagedLaunch(Path.of("""C:\Users\me\Apps\AgentMon\AgentMon.exe"""))
+        AutoStart(runKey = key, currentLaunch = { exe }, isWindows = true).enable()
+        assertEquals(""""C:\Users\me\Apps\AgentMon\AgentMon.exe" --background""", key.value)
+    }
+
+    @Test
     fun `a copy running from Gradle cannot be registered, and other systems are not offered it`() {
         val notInstalled = AutoStart(runKey = FakeRunKey(), currentLaunch = { null }, isWindows = true)
-        assertTrue(assertFailsWith<AutoStartException> { notInstalled.enable() }.message!!.contains("install-agent"))
+        assertTrue(assertFailsWith<AutoStartException> { notInstalled.enable() }.message!!.contains("AgentMon.exe"))
         val linux = AutoStart(runKey = FakeRunKey(), currentLaunch = { null }, isWindows = false)
         assertFalse(linux.supported)
         assertFalse(linux.isEnabled())

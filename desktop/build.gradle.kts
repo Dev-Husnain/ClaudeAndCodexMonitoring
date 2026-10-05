@@ -80,3 +80,12 @@ val installAgent by tasks.registering(Sync::class) {
     from(layout.projectDirectory.dir("src/dist"))
     into(target)
 }
+
+/** The agent's jars for `scripts/package-release.ps1`, which turns them into `AgentMon.exe` with its own Java. */
+val stageRelease by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Collects the desktop agent's jars for packaging a release."
+    from(tasks.named("jar"))
+    from(configurations.named("runtimeClasspath"))
+    into(layout.buildDirectory.dir("release/agent"))
+}
