@@ -9,13 +9,38 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-/** "This computer" options on the Overview screen: stay awake, and start with Windows. */
+/** "This computer" options on the Overview screen: the phone access address, stay awake, start with Windows. */
 class ComputerOptions(
     private val settings: DesktopSettings,
     private val keepAwake: KeepAwake,
     private val autoStart: AutoStart,
     private val scope: CoroutineScope,
+    /** An address given on the command line or in `AGENTMON_PUBLIC_URL`; it wins over the saved one. */
+    private val publicUrlOverride: PublicUrlOverride? = null,
 ) {
+    /** Where an address that cannot be edited in the window comes from. */
+    data class PublicUrlOverride(val url: String, val source: String)
+
+    /** The tunnel address for pairing codes, or null when only USB pairing is possible. */
+    val publicUrl: StateFlow<String?> =
+        publicUrlOverride?.let { MutableStateFlow<String?>(it.url).asStateFlow() } ?: settings.publicUrl
+
+    /** Set when the address comes from the command line or environment, naming where. */
+    val publicUrlLockedBy: String? get() = publicUrlOverride?.source
+
+    private val _addressError = MutableStateFlow<String?>(null)
+    val addressError: StateFlow<String?> = _addressError.asStateFlow()
+
+    /** Saves the address typed on the Overview screen. Returns false (with [addressError]) when it is not valid. */
+    fun setPublicUrl(input: String): Boolean {
+        if (publicUrlOverride != null) return false
+        return when (val parsed = PublicAddress.parse(input)) {
+            is PublicAddress.Parsed.Valid -> true.also { settings.setPublicUrl(parsed.url); _addressError.value = null }
+            PublicAddress.Parsed.Cleared -> true.also { settings.setPublicUrl(null); _addressError.value = null }
+            is PublicAddress.Parsed.Invalid -> false.also { _addressError.value = parsed.reason }
+        }
+    }
+
     val keepAwakeEnabled: StateFlow<Boolean> = settings.keepAwake
 
     private val _startWithWindows = MutableStateFlow(runCatching { autoStart.isEnabled() }.getOrDefault(false))

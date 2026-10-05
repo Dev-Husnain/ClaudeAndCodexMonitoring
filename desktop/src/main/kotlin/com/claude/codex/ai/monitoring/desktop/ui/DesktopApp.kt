@@ -62,6 +62,8 @@ fun DesktopApp(controller: DesktopController) {
     val keepAwake by controller.computer.keepAwakeEnabled.collectAsState()
     val startWithWindows by controller.computer.startWithWindows.collectAsState()
     val computerError by controller.computer.error.collectAsState()
+    val publicUrl by controller.computer.publicUrl.collectAsState()
+    val addressError by controller.computer.addressError.collectAsState()
     val colors = DesktopTheme.colors
 
     var tab by remember { mutableStateOf(Tab.OVERVIEW) }
@@ -133,7 +135,11 @@ fun DesktopApp(controller: DesktopController) {
                     startWithWindows = startWithWindows,
                     autoStartSupported = controller.computer.autoStartSupported,
                     error = computerError,
+                    publicAddress = publicUrl,
+                    publicAddressLockedBy = controller.computer.publicUrlLockedBy,
+                    publicAddressError = addressError,
                 ),
+                onPublicAddressSave = { controller.computer.setPublicUrl(it) },
                 onKeepAwakeChange = controller.computer::setKeepAwake,
                 onStartWithWindowsChange = controller.computer::setStartWithWindows,
             )
@@ -170,7 +176,7 @@ fun DesktopApp(controller: DesktopController) {
                 PairDialogContent(
                     offer = current,
                     route = route,
-                    tunnelHost = controller.publicUrl.substringAfter("://"),
+                    tunnelHost = publicUrl?.substringAfter("://"),
                     tunnelReachable = tunnelReachable,
                     desktopFingerprint = controller.identity.fingerprint,
                     onRouteChange = { controller.startPairing(it) },

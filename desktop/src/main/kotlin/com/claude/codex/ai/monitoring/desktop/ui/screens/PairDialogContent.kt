@@ -41,7 +41,8 @@ import java.awt.datatransfer.StringSelection
 fun PairDialogContent(
     offer: PairingOffer,
     route: PairingRoute,
-    tunnelHost: String,
+    /** Null while no phone access address is set: only USB pairing works. */
+    tunnelHost: String?,
     tunnelReachable: Boolean?,
     desktopFingerprint: String,
     onRouteChange: (PairingRoute) -> Unit,
@@ -72,10 +73,13 @@ fun PairDialogContent(
             textAlign = TextAlign.Center,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ToggleChip("Anywhere · $tunnelHost", route == PairingRoute.TUNNEL, { onRouteChange(PairingRoute.TUNNEL) })
+            ToggleChip("Anywhere · ${tunnelHost ?: "not set up"}", route == PairingRoute.TUNNEL, { onRouteChange(PairingRoute.TUNNEL) })
             ToggleChip("USB · adb reverse", route == PairingRoute.USB, { onRouteChange(PairingRoute.USB) })
         }
         val routeNote = when {
+            tunnelHost == null ->
+                "To pair for use anywhere, set your tunnel address under Overview > This computer > Phone access address. " +
+                    "This code uses USB: connect the phone and run: adb reverse tcp:8787 tcp:8787"
             route == PairingRoute.USB && tunnelReachable == false ->
                 "$tunnelHost is not reachable yet, so this code uses USB. Connect the phone and run: adb reverse tcp:8787 tcp:8787"
             route == PairingRoute.USB -> "Phone must be connected by USB with: adb reverse tcp:8787 tcp:8787"

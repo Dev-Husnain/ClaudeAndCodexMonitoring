@@ -4,7 +4,6 @@ object ProtocolConstants {
     const val PROTOCOL_VERSION = 1
     const val DEFAULT_PORT = 8787
     const val LOOPBACK_HOST = "127.0.0.1"
-    const val PUBLIC_HOST = "agent.appsdev.qzz.io"
     const val PATH_WS = "/ws"
     const val PATH_HEALTH = "/health"
     const val PATH_PAIR = "/pair"

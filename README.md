@@ -123,7 +123,8 @@ Pairing happens once per phone. Only phones you approve on the computer can conn
 
 1. On the computer, in AgentMon, open **Devices** and click **Pair device**.
 2. Pick how the phone will reach the computer:
-   - **Anywhere · your-tunnel-host**: over the internet, through your Cloudflare tunnel. See
+   - **Anywhere · your-tunnel-host**: over the internet, through your Cloudflare tunnel. Until you set your
+     address under **Overview → This computer → Phone access address**, it reads *not set up*. See
      [the tunnel section](#reach-your-computer-from-anywhere-cloudflare-tunnel).
    - **USB · adb reverse**: over a USB cable. Run `adb reverse tcp:8787 tcp:8787` after plugging in.
 3. A QR code appears. On the phone, tap **Pair with your computer** and scan it. If the camera can't read it,
@@ -213,13 +214,16 @@ hostname of yours to `http://localhost:8787`.
    over mobile data. It should show `{"status":"ok",...}`.
 8. Run it as a service: `cloudflared service install` from an **Administrator** terminal. The full steps,
    including a Windows service gotcha, are in [docs/setup.md](docs/setup.md#c-cloudflare-tunnel-phase-2-remote-access-over-mobile-data).
-9. **Tell AgentMon your address**, so the pairing QR carries it. Set a user environment variable and restart
-   the agent:
-   ```powershell
-   [Environment]::SetEnvironmentVariable("AGENTMON_PUBLIC_URL", "https://agent.<your-domain>", "User")
-   ```
-   Or start the agent with `AgentMon.exe --public-url https://agent.<your-domain>`.
-10. Pair the phone with the **Anywhere** option.
+9. **Tell AgentMon your address.** In the agent window, open **Overview**. Under **This computer → Phone access
+   address**, type your hostname, for example `agent.<your-domain>`, and click **Save**. Only `https://`
+   addresses are accepted; `https://` is added for you.
+   - The address goes into every pairing QR code for the **Anywhere** route, and it is saved in
+     `%APPDATA%\AgentMon\settings.properties`, so it survives restarts and updates.
+   - Leave the field empty to pair over USB only.
+   - Advanced: `AGENTMON_PUBLIC_URL` (environment variable) or `AgentMon.exe --public-url https://…` override the
+     saved address. The field then shows where it comes from and can't be edited.
+10. Pair the phone with the **Anywhere** option. If you already paired over USB, pair again with **Anywhere**:
+    the address is part of the pairing.
 
 Hooks and the wrapper link are refused when they arrive through the tunnel. They must come from the computer itself.
 
@@ -287,7 +291,7 @@ Theme (system, light, dark), background alerts, battery optimisation, the paired
 
 | Tab | What it does |
 |---|---|
-| **Overview** | Agent status, connected phones, live sessions, and **This computer**: *Stay awake while Claude works*, *Start with Windows* |
+| **Overview** | Agent status, connected phones, live sessions, and **This computer**: *Phone access address* (your tunnel hostname), *Stay awake while Claude works*, *Start with Windows* |
 | **Projects** | Monitored folders: add or remove, reinstall hooks, see when the last hook arrived |
 | **Devices** | **Pair device**, paired phones, their project access and input permission, **Revoke** |
 | **Activity** | Audit log: pairings, connections, refusals, project changes (never prompt content) |
@@ -297,7 +301,7 @@ Command-line options for `AgentMon.exe`:
 | Option | Meaning |
 |---|---|
 | `--background` | Start in the tray without opening the window (used by Start with Windows) |
-| `--public-url https://…` | The tunnel address put in pairing QR codes (or set `AGENTMON_PUBLIC_URL`) |
+| `--public-url https://…` | Overrides the *Phone access address* from Overview (so does `AGENTMON_PUBLIC_URL`) |
 | `--demo` | Add fake sessions, to try the phone without Claude Code |
 
 The agent keeps its keys, database and settings in `%APPDATA%\AgentMon`, not in the program folder, so updating
@@ -330,6 +334,7 @@ More in [docs/threat-model.md](docs/threat-model.md).
 | `agentmon` is not recognized | The `cli` folder is not on PATH, or the terminal or Android Studio started before you changed it. Restart it, or refresh PATH as shown above. |
 | PowerShell says "Unexpected token 'claude'" | You ran a quoted path without `&`. Use `& "C:\path\agentmon.exe" claude`, or put it on PATH. |
 | Session doesn't appear on the phone | Check the agent is running (tray icon) and the phone shows **Connected**. With plain `claude`, it appears after the first prompt. A phone limited to some projects needs the project granted in **Devices**. |
+| Pairing only offers USB / "Anywhere · not set up" | Enter your tunnel hostname under **Overview → This computer → Phone access address** and click **Save**. |
 | Phone shows **Offline** | Open `https://agent.<your-domain>/health` on the phone. If that fails, check the cloudflared service. Over USB, run `adb reverse tcp:8787 tcp:8787` again after reconnecting. |
 | "Start with Windows" can't be turned on | Run the agent from `AgentMon.exe` in a permanent folder, not from a build or the Downloads folder. |
 | Alerts don't arrive with the app closed | Turn on **Alerts when the app is closed** and remove battery restrictions for AgentMon. Some phones (Xiaomi, Oppo…) also need "Autostart" allowed. |

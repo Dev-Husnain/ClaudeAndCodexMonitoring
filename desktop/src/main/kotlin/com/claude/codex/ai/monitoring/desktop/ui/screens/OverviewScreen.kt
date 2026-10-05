@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.claude.codex.ai.monitoring.desktop.session.RegistryState
 import com.claude.codex.ai.monitoring.desktop.ui.components.DesktopCard
 import com.claude.codex.ai.monitoring.desktop.ui.components.Pill
+import com.claude.codex.ai.monitoring.desktop.ui.components.PublicAddressRow
 import com.claude.codex.ai.monitoring.desktop.ui.components.SessionTile
 import com.claude.codex.ai.monitoring.desktop.ui.components.StatusDot
 import com.claude.codex.ai.monitoring.desktop.ui.components.SwitchRow
@@ -32,6 +33,10 @@ data class ComputerOptionsUiModel(
     val startWithWindows: Boolean,
     val autoStartSupported: Boolean,
     val error: String?,
+    /** The tunnel address (`https://host`), or null while only USB pairing works. */
+    val publicAddress: String? = null,
+    val publicAddressLockedBy: String? = null,
+    val publicAddressError: String? = null,
 )
 
 /** Agent status, this computer's options, and live session cards grouped by project. */
@@ -43,6 +48,7 @@ fun OverviewScreen(
     computer: ComputerOptionsUiModel,
     onKeepAwakeChange: (Boolean) -> Unit,
     onStartWithWindowsChange: (Boolean) -> Unit,
+    onPublicAddressSave: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = DesktopTheme.colors
@@ -89,6 +95,12 @@ fun OverviewScreen(
             DesktopCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text("This computer", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                    PublicAddressRow(
+                        address = computer.publicAddress,
+                        lockedBy = computer.publicAddressLockedBy,
+                        error = computer.publicAddressError,
+                        onSave = onPublicAddressSave,
+                    )
                     SwitchRow(
                         title = "Stay awake while Claude works",
                         summary = "Keeps Windows from sleeping while a session runs or waits for you, or Away mode is on. " +

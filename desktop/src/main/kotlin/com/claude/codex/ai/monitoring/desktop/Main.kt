@@ -35,6 +35,7 @@ import com.claude.codex.ai.monitoring.desktop.system.AutoStart
 import com.claude.codex.ai.monitoring.desktop.system.ComputerOptions
 import com.claude.codex.ai.monitoring.desktop.system.DesktopSettings
 import com.claude.codex.ai.monitoring.desktop.system.KeepAwake
+import com.claude.codex.ai.monitoring.desktop.system.PublicAddress
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.desktop.ui.DesktopApp
@@ -67,9 +68,13 @@ fun main(args: Array<String>) {
     val demoMode = "--demo" in args
     // Started with Windows: stay in the tray until opened.
     val startHidden = "--background" in args
-    // Your own tunnel address: --public-url, or the AGENTMON_PUBLIC_URL environment variable.
-    val publicUrl = arg("public-url") ?: System.getenv("AGENTMON_PUBLIC_URL")?.trim()?.trimEnd('/')?.ifEmpty { null }
-        ?: "https://${ProtocolConstants.PUBLIC_HOST}"
+    // The tunnel address is set on the Overview screen; --public-url or AGENTMON_PUBLIC_URL override it.
+    val publicUrlOverride = listOfNotNull(
+        arg("public-url")?.let { it to "--public-url" },
+        System.getenv("AGENTMON_PUBLIC_URL")?.let { it to "AGENTMON_PUBLIC_URL" },
+    ).firstNotNullOfOrNull { (value, source) ->
+        (PublicAddress.parse(value) as? PublicAddress.Parsed.Valid)?.let { ComputerOptions.PublicUrlOverride(it.url, source) }
+    }
     val computerName = System.getenv("COMPUTERNAME")
         ?: runCatching { InetAddress.getLocalHost().hostName }.getOrNull()
         ?: "This computer"
@@ -111,10 +116,10 @@ fun main(args: Array<String>) {
         handler, pairing, RateLimiter(maxFailures = 10, windowMs = 10 * 60_000L), VERSION, hookReceiver,
         WrapperEndpoint(installer.secret, wrappers, audit),
     )
-    val computer = ComputerOptions(DesktopSettings(dataDir.resolve("settings.properties")), KeepAwake(), AutoStart(), scope)
+    val computer = ComputerOptions(DesktopSettings(dataDir.resolve("settings.properties")), KeepAwake(), AutoStart(), scope, publicUrlOverride)
     computer.start(registry.state, control.awayMode)
     controller = DesktopController(
-        registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope, computer,
+        registry, hub, devices, audit, pairing, identity, demoMode, projects, tracker, installer, control, scope, computer,
     )
 
     server.start()

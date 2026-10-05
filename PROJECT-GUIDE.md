@@ -217,7 +217,10 @@ DataStore. It is covered by the manual gate above.
   `cligentmon.exe`, jpackage app-images with a jlink-trimmed runtime, ~136 MB zipped) and the debug-signed APK.
   Needs a JDK with jpackage (`JPACKAGE_JDK`); the wrapper lives in `cli\` because Windows folder names ignore case
 - [x] "Start with Windows" also registers the packaged `AgentMon.exe` (`jpackage.app-path`)
-- [x] `AGENTMON_PUBLIC_URL` sets the tunnel address for other owners (besides `--public-url`)
+- [x] **Phone access address** on Overview → This computer: the owner's tunnel hostname, validated (https only, host
+  only), saved in `settings.properties`; `--public-url` / `AGENTMON_PUBLIC_URL` override it and lock the field. The
+  owner's domain is no longer built in: without an address, pairing offers USB only and says where to set it.
+  This PC's address was saved during the switch, so nothing changed here
 - [x] Real test: the packaged agent answered `/health`, the packaged wrapper ran `claude --version` through ConPTY
 - [ ] Owner: upload the two files to a GitHub release (no `gh` CLI on this PC); a store APK needs an owner signing key
 

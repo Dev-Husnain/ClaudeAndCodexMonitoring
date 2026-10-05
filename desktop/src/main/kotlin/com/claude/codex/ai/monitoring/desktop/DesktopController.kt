@@ -43,7 +43,6 @@ class DesktopController(
     val audit: AuditLog,
     val pairing: PairingManager,
     val identity: DesktopIdentity,
-    val publicUrl: String,
     val demoMode: Boolean,
     val projects: ProjectStore,
     val tracker: SessionTracker,
@@ -124,8 +123,9 @@ class DesktopController(
 
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(PROBE_TIMEOUT_S)).build()
 
-    fun baseUrlFor(route: PairingRoute): String = when (route) {
-        PairingRoute.TUNNEL -> publicUrl
+    /** Null for the tunnel route while no address is set up. */
+    fun baseUrlFor(route: PairingRoute): String? = when (route) {
+        PairingRoute.TUNNEL -> computer.publicUrl.value
         PairingRoute.USB -> "http://${ProtocolConstants.LOOPBACK_HOST}:${ProtocolConstants.DEFAULT_PORT}"
     }
 
@@ -142,8 +142,10 @@ class DesktopController(
     }
 
     fun startPairing(route: PairingRoute) {
-        _route.value = route
-        pairing.createOffer(baseUrlFor(route))
+        // Without an address the tunnel route cannot work; the dialog explains where to set one.
+        val effective = if (baseUrlFor(route) == null) PairingRoute.USB else route
+        _route.value = effective
+        pairing.createOffer(baseUrlFor(effective)!!)
     }
 
     fun cancelPairing() = pairing.cancelOffer()
@@ -170,6 +172,7 @@ class DesktopController(
 
     /** True when the public tunnel address reaches this very agent (not just any server). */
     private suspend fun probeTunnel(): Boolean = withContext(Dispatchers.IO) {
+        val publicUrl = computer.publicUrl.value ?: return@withContext false
         runCatching {
             val request = HttpRequest.newBuilder(URI(publicUrl + ProtocolConstants.PATH_HEALTH))
                 .timeout(Duration.ofSeconds(PROBE_TIMEOUT_S))
