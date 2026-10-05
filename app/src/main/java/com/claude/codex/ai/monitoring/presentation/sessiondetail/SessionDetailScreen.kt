@@ -23,6 +23,7 @@ import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.ConfirmDialog
 import com.claude.codex.ai.monitoring.core.ui.StateMessage
 import com.claude.codex.ai.monitoring.core.ui.StatusPill
+import com.claude.codex.ai.monitoring.core.ui.InfoBanner
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.resolve
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
@@ -121,6 +122,14 @@ fun SessionDetailScreen(
                                 enabled = !state.isOffline,
                                 onKey = { viewModel.onEvent(SessionDetailEvent.OnTerminalKey(it)) },
                                 modifier = Modifier.padding(top = Dimens.SpaceMd),
+                            )
+                        } else if (state.showReadOnlyNote) {
+                            // Without this the missing keys and message box look like a fault.
+                            InfoBanner(
+                                icon = R.drawable.ic_shield,
+                                text = stringResource(R.string.detail_read_only_note),
+                                tone = StatusTone.STALE,
+                                modifier = Modifier.padding(start = Dimens.ScreenPadding, end = Dimens.ScreenPadding, top = Dimens.SpaceMd),
                             )
                         }
                     } else {
