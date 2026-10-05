@@ -63,6 +63,16 @@ class TranscriptStore(
             .filter { it.extension == "jsonl" && UUID.matches(it.nameWithoutExtension) }
     }
 
+    /**
+     * The title of a live conversation's transcript, as Claude Code's hooks report its path. Only files in
+     * Claude's own projects folder are read.
+     */
+    fun titleOf(transcriptPath: String): String? = runCatching {
+        val root = configDir.resolve("projects").toAbsolutePath().normalize()
+        val file = Path.of(transcriptPath).toAbsolutePath().normalize()
+        file.takeIf { it.startsWith(root) && it.extension == "jsonl" && Files.isRegularFile(it) }?.let(::read)?.title
+    }.getOrNull()
+
     private fun read(file: Path): PastSessionDto? = runCatching {
         var name: String? = null
         var aiTitle: String? = null

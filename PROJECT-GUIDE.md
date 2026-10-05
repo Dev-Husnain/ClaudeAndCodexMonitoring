@@ -196,6 +196,17 @@ DataStore. It is covered by the manual gate above.
 - [ ] Remaining, needs the owner: an MSI/EXE installer needs a JDK with `jpackage` (the Android Studio JBR has none);
   optional end-to-end encryption on top of the tunnel's TLS; a TalkBack/large-font QA pass on the phone
 
+### Feature: Readable project and session names
+- [x] Project names come from the project itself: Android Studio's `.idea/.name`, Gradle `rootProject.name`,
+  `package.json`, `Cargo.toml`, `pyproject.toml`, else the folder; slugs read as words (`agentmon-hooktest` →
+  "Agentmon Hooktest"), names with their own capitals stay. Re-read at every agent start, so older projects update
+- [x] Each session carries its topic (`SessionDto.title`): the first typed prompt until Claude's title is in the
+  transcript (read at every `Stop`, only from Claude's projects folder); `/clear` starts over. Shown under the project
+  name on the card and as the detail screen's subtitle; never in notifications (prompt text stays off the lock screen)
+- [x] No raw ids on the phone: an unnamed project or session reads "Claude Code session" (was a hash / short id)
+- [x] Tests: namer (3), topic (2), transcript title (1); all suites and lint pass
+- [x] Real test: the phone shows "AGENTMON HOOKTEST" after an agent restart
+
 ### Feature: Resume any saved conversation + remove from phone (M6, spec phase 6)
 - [x] Checked the docs first (reported to the owner): `claude -p --resume <id>` uses the normal subscription login and
   plan limits (no API key; only `--bare` would need one), keeps the session id (`--fork-session` would not), and runs
@@ -304,6 +315,8 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
 - **D27** Resuming is refused while any Claude has the conversation open (two writers would interleave the transcript).
 - **D28** No new JDK was installed for packaging; the agent is "installed" as jars + `javaw` so it can start with
   Windows today. A real MSI needs `jpackage` (owner decision).
+- **D29** Session topics are prompt text, so they travel like snippets (to granted phones only) but are left out of
+  alerts, and are never stored on the computer beyond the in-memory session.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.

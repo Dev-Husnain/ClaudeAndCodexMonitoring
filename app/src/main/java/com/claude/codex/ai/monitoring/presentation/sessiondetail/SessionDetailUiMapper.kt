@@ -17,14 +17,13 @@ import com.claude.codex.ai.monitoring.presentation.common.toLabel
 import com.claude.codex.ai.monitoring.presentation.common.toTone
 import com.claude.codex.ai.monitoring.presentation.common.toUiModel
 
-private const val SHORT_ID_LENGTH = 8
 private val STOPPABLE = setOf(SessionStatus.RUNNING, SessionStatus.WAITING_INPUT, SessionStatus.STALE)
 
-fun SessionDetailModel.toUiState(sessionId: String, nowMs: Long): SessionDetailUiState {
+fun SessionDetailModel.toUiState(nowMs: Long): SessionDetailUiState {
     val offline = connection is ConnectionStatus.Offline
     return SessionDetailUiState(
-        title = projectName ?: session?.projectId.orEmpty(),
-        subtitle = sessionId.take(SHORT_ID_LENGTH),
+        title = projectName.orEmpty(),
+        subtitle = session?.let { s -> s.title?.let { UiText.Raw(it) } ?: UiText.Res(R.string.session_default_name) },
         connection = connection.toUiModel(),
         isLoading = !hasSnapshot && !offline,
         isNotFound = (hasSnapshot && session == null) || (!hasSnapshot && offline),

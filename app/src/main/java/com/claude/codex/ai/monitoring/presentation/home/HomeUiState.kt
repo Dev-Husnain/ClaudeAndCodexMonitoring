@@ -41,7 +41,10 @@ data class UnauthorizedUiModel(
 @Immutable
 data class SessionItemUiModel(
     val sessionId: String,
-    val projectName: String,
+    /** Null when the computer has not named the project; the card then shows a generic name. */
+    val projectName: String?,
+    /** What the conversation is about, shown under the project name. */
+    val topic: String? = null,
     val tone: StatusTone,
     val statusLabel: UiText,
     val snippet: String?,

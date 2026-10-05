@@ -17,6 +17,7 @@ enum class SessionAlertKind {
 
 data class SessionAlertModel(
     val sessionId: String,
-    val projectName: String,
+    /** Null when the computer has not named the project; the alert then uses a generic name. */
+    val projectName: String?,
     val kind: SessionAlertKind,
 )

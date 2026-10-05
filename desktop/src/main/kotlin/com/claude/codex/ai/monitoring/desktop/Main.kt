@@ -84,7 +84,8 @@ fun main(args: Array<String>) {
     val pairing = PairingManager(identity, devices, audit, computerName)
     val projects = ProjectStore(database)
     projects.projects.value.forEach { registry.upsertProject(ProjectDto(it.projectId, it.name)) }
-    val tracker = SessionTracker(registry, projects)
+    val transcripts = TranscriptStore()
+    val tracker = SessionTracker(registry, projects, transcriptTitle = transcripts::titleOf)
     val control = ControlCenter(registry, audit)
     val installer = HookInstaller(HookInstaller.loadOrCreateSecret(dataDir.resolve("hook-secret")))
     // Keep every monitored project's hooks current (new events or timeouts after an update).
@@ -97,7 +98,7 @@ fun main(args: Array<String>) {
     control.resumer = SessionResumer(
         registry,
         headless,
-        TranscriptStore(),
+        transcripts,
         projectPath = { id -> projects.projects.value.firstOrNull { it.projectId == id }?.let { Path.of(it.path) } },
     )
     val hookReceiver = HookReceiver(installer.secret, tracker, audit, control, sessionAlias = headless::sessionIdFor)

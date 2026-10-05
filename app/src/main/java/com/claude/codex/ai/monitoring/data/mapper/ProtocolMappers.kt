@@ -46,6 +46,7 @@ fun SessionDto.toModel() = SessionModel(
     errorInfo = errorInfo,
     awaiting = awaiting?.toModel(),
     claudeSessionId = claudeSessionId,
+    title = title,
 )
 
 fun TimelineEventDto.toModel() = TimelineEventModel(

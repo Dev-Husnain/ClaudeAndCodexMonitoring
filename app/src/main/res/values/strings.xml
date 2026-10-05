@@ -104,7 +104,7 @@
     <string name="home_monitor_only">Monitor only</string>
     <string name="home_read_only">Read-only</string>
     <string name="home_your_computer">your computer</string>
-    <string name="cd_session_card">%1$s, %2$s</string>
+    <string name="session_default_name">Claude Code session</string>
     <string name="home_unauthorized_revoked_title">This phone was removed</string>
     <string name="home_unauthorized_revoked_message">Access was revoked on %1$s. Pair again to reconnect.</string>
     <string name="home_unauthorized_not_paired_title">Your computer forgot this phone</string>

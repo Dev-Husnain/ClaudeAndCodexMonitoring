@@ -65,7 +65,8 @@ fun SessionOverviewModel.toHomeUiState(nowMs: Long, pairedComputerName: String?)
 
 private fun SessionModel.toItemUiModel(projectNames: Map<String, String>, nowMs: Long) = SessionItemUiModel(
     sessionId = sessionId,
-    projectName = projectNames[projectId] ?: projectId,
+    projectName = projectNames[projectId],
+    topic = title,
     tone = status.toTone(),
     statusLabel = status.toLabel(),
     snippet = errorInfo ?: lastMessageSnippet,

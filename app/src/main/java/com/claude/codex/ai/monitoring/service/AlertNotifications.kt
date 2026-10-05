@@ -81,7 +81,7 @@ object AlertNotifications {
         return NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_bell)
             .setContentTitle(title)
-            .setContentText(alert.projectName)
+            .setContentText(alert.projectName ?: context.getString(R.string.session_default_name))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

@@ -55,6 +55,18 @@ class TranscriptStoreTest {
     }
 
     @Test
+    fun `a live conversation's title is read only from Claude's own projects folder`() {
+        transcript(project, id1, ageMinutes = 1, user("Fix the login bug"), """{"type":"ai-title","aiTitle":"Login crash fix"}""")
+        val file = config.resolve("projects").resolve(TranscriptStore.folderName(project)).resolve("$id1.jsonl")
+        assertEquals("Login crash fix", store.titleOf(file.toString()))
+
+        val outside = Files.createTempFile("agentmon-elsewhere", ".jsonl")
+        outside.writeText(user("secret"))
+        assertNull(store.titleOf(outside.toString()))
+        assertNull(store.titleOf(file.resolveSibling("missing.jsonl").toString()))
+    }
+
+    @Test
     fun `unreadable or unknown files are skipped`() {
         transcript(project, id4, ageMinutes = 1, "not json", """{"type":"user","message":{"content":[{"type":"tool_result"}]}}""")
         val dir = config.resolve("projects").resolve(TranscriptStore.folderName(project))

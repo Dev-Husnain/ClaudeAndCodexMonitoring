@@ -10,7 +10,8 @@ import com.claude.codex.ai.monitoring.presentation.common.ConnectionUiModel
 @Immutable
 data class SessionDetailUiState(
     val title: String = "",
-    val subtitle: String = "",
+    /** What the conversation is about, or a generic "Claude Code session". */
+    val subtitle: UiText? = null,
     val connection: ConnectionUiModel = ConnectionUiModel.Initial,
     /** Waiting for the first snapshot from the computer. */
     val isLoading: Boolean = true,

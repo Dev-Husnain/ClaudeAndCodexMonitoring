@@ -32,6 +32,8 @@ data class SessionDto(
      * wrapper's id). This is what `claude --resume` needs.
      */
     val claudeSessionId: String? = null,
+    /** What the conversation is about: its name, Claude's generated title, or the first prompt, shortened. */
+    val title: String? = null,
 )
 
 @Serializable

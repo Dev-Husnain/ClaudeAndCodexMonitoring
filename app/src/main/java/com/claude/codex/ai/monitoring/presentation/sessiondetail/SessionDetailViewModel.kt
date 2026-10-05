@@ -42,7 +42,7 @@ class SessionDetailViewModel(
     clock: Clock,
 ) : ViewModel() {
 
-    private val _sessionDetailUiState = MutableStateFlow(SessionDetailUiState(subtitle = sessionId))
+    private val _sessionDetailUiState = MutableStateFlow(SessionDetailUiState())
     val sessionDetailUiState: StateFlow<SessionDetailUiState> = _sessionDetailUiState.asStateFlow()
 
     private val _effects = Channel<SessionDetailEffect>(Channel.BUFFERED)
@@ -62,7 +62,7 @@ class SessionDetailViewModel(
 
     init {
         viewModelScope.launch {
-            combine(observeSessionDetail(sessionId), clock.ticks()) { detail, now -> detail.toUiState(sessionId, now) }
+            combine(observeSessionDetail(sessionId), clock.ticks()) { detail, now -> detail.toUiState(now) }
                 .collect { fresh -> _sessionDetailUiState.update { previous -> fresh.withLocalFrom(previous) } }
         }
     }

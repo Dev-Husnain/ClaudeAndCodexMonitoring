@@ -13,4 +13,6 @@ data class SessionModel(
     val awaiting: AwaitingModel? = null,
     /** Claude's own id when it differs from [sessionId] (a wrapper terminal's conversation). */
     val claudeSessionId: String? = null,
+    /** What the conversation is about (its name, Claude's title or first prompt), once known. */
+    val title: String? = null,
 )

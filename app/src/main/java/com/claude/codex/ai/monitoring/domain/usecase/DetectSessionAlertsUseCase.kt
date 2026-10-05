@@ -32,7 +32,7 @@ class DetectSessionAlertsUseCase {
         } else {
             now.filter { (id, kind) -> before[id] != kind }.map { (id, kind) ->
                 val session = current.sessions.first { it.sessionId == id }
-                SessionAlertModel(id, names[session.projectId] ?: session.projectId, kind)
+                SessionAlertModel(id, names[session.projectId], kind)
             }
         }
         val cleared = before.orEmpty().keys - now.keys

@@ -79,7 +79,7 @@ fun SessionDetailScreen(
         ) {
             AppTopBar(
                 title = state.title,
-                subtitle = state.subtitle,
+                subtitle = state.subtitle?.resolve(),
                 onBack = onBack,
                 actions = { StatusPill(tone = state.connection.tone, label = state.connection.label.resolve()) },
             )

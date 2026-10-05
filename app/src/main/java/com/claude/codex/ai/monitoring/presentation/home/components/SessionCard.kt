@@ -30,7 +30,7 @@ import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.core.utils.resolve
 import com.claude.codex.ai.monitoring.presentation.home.SessionItemUiModel
 
-/** One agent session: live orb, project, status, the last message and when it happened. */
+/** One agent session: live orb, project, what it is about, status, the last message and when it happened. */
 @Composable
 fun SessionCard(
     session: SessionItemUiModel,
@@ -40,7 +40,8 @@ fun SessionCard(
     onLongClick: () -> Unit = {},
 ) {
     val statusLabel = session.statusLabel.resolve()
-    val cardDescription = stringResource(R.string.cd_session_card, session.projectName, statusLabel)
+    val projectName = session.projectName ?: stringResource(R.string.session_default_name)
+    val cardDescription = listOfNotNull(projectName, session.topic, statusLabel).joinToString(", ")
     SurfaceCard(
         onClick = onClick,
         onLongClick = onLongClick.takeIf { session.removable },
@@ -57,12 +58,21 @@ fun SessionCard(
             StatusOrb(tone = session.tone)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = session.projectName,
+                    text = projectName,
                     style = MaterialTheme.typography.titleMedium,
                     color = AppTheme.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (session.topic != null) {
+                    Text(
+                        text = session.topic,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
                     Text(text = statusLabel, style = MaterialTheme.typography.labelMedium, color = session.tone.color())
                     Text(
@@ -124,6 +134,7 @@ private fun SessionCardPreview() {
             session = SessionItemUiModel(
                 sessionId = "s1",
                 projectName = "ClaudeMonitoring",
+                topic = "Fix the login crash on Android 14",
                 tone = StatusTone.WAITING,
                 statusLabel = UiText.Raw("Needs you"),
                 snippet = "Claude needs your permission to use Bash",

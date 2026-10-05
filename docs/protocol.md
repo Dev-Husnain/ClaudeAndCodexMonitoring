@@ -33,7 +33,7 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | D→C | `challenge` | `nonce`, `desktopSignature` *(phase 3)* |
 | D→C | `ready` | `computer`, `projects`, `sessions`, `canSendInput`, `awayMode` |
 | D→C | `away.update` | `enabled` *(addition, phase 5a; sent to every connected phone)* |
-| D→C | `session.update` | `session` (incl. `claudeSessionId` when it differs from `sessionId`) |
+| D→C | `session.update` | `session` (incl. `claudeSessionId` when it differs from `sessionId`, and `title`, the conversation's topic, once known) |
 | D→C | `sessions.past.result` | `projectId`, `sessions[{claudeSessionId, title, lastActiveAt}]` *(addition, phase 6)* |
 | D→C | `session.event` | `sessionId`, `event` |
 | D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |

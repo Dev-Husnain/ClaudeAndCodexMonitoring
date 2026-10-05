@@ -27,7 +27,8 @@ class ProjectStore(
 
     fun add(path: Path): MonitoredProject {
         val normalized = normalize(path.absolute().normalize().toString())
-        val project = MonitoredProject(idFor(normalized), path.absolute().normalize().name.ifBlank { normalized }, normalized, clock())
+        val dir = path.absolute().normalize()
+        val project = MonitoredProject(idFor(normalized), ProjectNamer.nameFor(dir, fallback = dir.name.ifBlank { normalized }), normalized, clock())
         synchronized(this) {
             queries.upsert(project.projectId, project.name, project.path, project.addedAtMs)
             _projects.value = load()
@@ -53,8 +54,11 @@ class ProjectStore(
             .maxByOrNull { it.path.length }
     }
 
+    /** Names are read again on every start, so renaming a project (or a newer naming rule) reaches the phone. */
     private fun load(): List<MonitoredProject> =
-        queries.selectAll().executeAsList().map { MonitoredProject(it.project_id, it.name, it.path, it.added_at) }
+        queries.selectAll().executeAsList().map {
+            MonitoredProject(it.project_id, ProjectNamer.nameFor(Path.of(it.path), fallback = it.name), it.path, it.added_at)
+        }
 
     companion object {
         private val windows = System.getProperty("os.name").orEmpty().startsWith("Windows")
