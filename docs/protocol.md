@@ -75,7 +75,8 @@ Error codes: `AUTH_FAILED`, `NOT_PAIRED`, `FORBIDDEN_PROJECT`, `READ_ONLY`, `SES
 5. Revoking sends `revoked` and closes the socket. Changing a grant closes the socket so the phone reconnects
    with the new grant. `NOT_PAIRED`, `AUTH_FAILED`, `revoked` or a bad desktop signature stop the phone from
    reconnecting until it is paired again.
-6. Failed attempts are rate-limited per IP (the `CF-Connecting-IP` header through the tunnel) and per
+6. Failed attempts are rate-limited per IP (through a tunnel: `CF-Connecting-IP`, else the first
+   `X-Forwarded-For` / `X-Real-IP` entry) and per
    device: 5 failures per 5 min.
 
 Heartbeat: the phone sends `ping` every 25 s and treats 60 s without any frame as a dead socket.
@@ -97,9 +98,10 @@ session appears on its first prompt or tool call instead. The agent answers with
 "no decision". If the agent is not running, Claude Code treats the failed connection as a non-blocking error
 and carries on.
 
-`/hook` refuses a missing or wrong secret, and refuses **any request that came through the Cloudflare
-tunnel** (identified by the `CF-Connecting-IP` / `Cf-Ray` headers), because the tunnel also terminates on
-127.0.0.1.
+`/hook` refuses a missing or wrong secret, and refuses **any request that came through a tunnel**,
+because a tunnel also terminates on 127.0.0.1. Tunnel traffic is recognised by Cloudflare's `CF-Connecting-IP` /
+`Cf-Ray` headers or the standard forwarding headers other tunnels add (`X-Forwarded-For`, `X-Forwarded-Host`,
+`X-Real-IP`, `Forwarded`).
 
 State machine: prompt or tool → RUNNING; PermissionRequest or a permission/elicitation notification →
 WAITING_INPUT; Stop → IDLE; StopFailure → ERROR; SessionEnd → ENDED; RUNNING with 15 minutes of silence →
@@ -167,7 +169,7 @@ waiting and this phone may send input.
 `agentmon claude [args]` (the `:cli` module) runs Claude Code in a pseudo-terminal (ConPTY on Windows),
 passes the keyboard and screen through unchanged, and connects to `ws://127.0.0.1:8787/wrapper`. That
 route has the same rules as `/hook`: the hook secret in `X-Agentmon-Secret`, and anything carrying
-Cloudflare headers is refused. When the agent is not running Claude still works; the link retries every
+tunnel headers (as for `/hook`) is refused. When the agent is not running Claude still works; the link retries every
 3 s and replays the last ~200k characters of output when it connects.
 
 Wrapper frames (JSON, `type` discriminator, never sent to phones):

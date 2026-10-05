@@ -51,6 +51,9 @@ Troubleshooting: if pairing says it could not reach the computer, check `/health
 
 ## C. Cloudflare tunnel (phase 2: remote access over mobile data)
 
+> These are the notes for this development machine and its domain. For a general guide to setting up your
+> own tunnel, see [tunnel.md](tunnel.md).
+
 Phase 3 (pairing and authentication) is done, so only approved phones can use the tunnel.
 
 1. **Put the domain on Cloudflare.** Log in at dash.cloudflare.com (the free plan is fine), click

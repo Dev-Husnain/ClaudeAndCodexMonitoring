@@ -10,25 +10,46 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 - **`agentmon` wrapper.** Start Claude with `agentmon claude` instead of `claude`, and the phone can see that
   terminal and type into it.
 
-> Status: version 1.0.1, Windows + Android. Claude Code is supported; Codex is planned.
+> Status: version 1.0.2, Windows + Android. Claude Code is supported; Codex is planned.
 
 ---
 
 ## Contents
 
-1. [How it works](#how-it-works)
-2. [What you need](#what-you-need)
-3. [Install (release)](#install-release)
-4. [Pair your phone](#pair-your-phone)
-5. [Use it every day](#use-it-every-day)
-6. [Reach your computer from anywhere (Cloudflare tunnel)](#reach-your-computer-from-anywhere-cloudflare-tunnel)
-7. [Phone app guide](#phone-app-guide)
-8. [Desktop agent guide](#desktop-agent-guide)
-9. [Security and privacy](#security-and-privacy)
-10. [Troubleshooting](#troubleshooting)
-11. [Build from source](#build-from-source)
-12. [Make a release](#make-a-release)
-13. [Project layout and docs](#project-layout-and-docs)
+1. [Quick start](#quick-start)
+2. [How it works](#how-it-works)
+3. [What you need](#what-you-need)
+4. [Step 1: Install on the computer](#step-1-install-on-the-computer)
+5. [Step 2: Install the phone app](#step-2-install-the-phone-app)
+6. [Step 3: Choose how the phone reaches the computer](#step-3-choose-how-the-phone-reaches-the-computer)
+   - [Option A: USB cable](#option-a-usb-cable)
+   - [Option B: your own tunnel (use it anywhere)](#option-b-your-own-tunnel-use-it-anywhere)
+7. [Step 4: Pair your phone](#step-4-pair-your-phone)
+8. [Step 5: Start Claude through AgentMon](#step-5-start-claude-through-agentmon)
+9. [Running the agent](#running-the-agent)
+10. [Everyday use](#everyday-use)
+11. [Phone app guide](#phone-app-guide)
+12. [Desktop agent guide](#desktop-agent-guide)
+13. [Security and privacy](#security-and-privacy)
+14. [Troubleshooting](#troubleshooting)
+15. [Build from source](#build-from-source)
+16. [Make a release](#make-a-release)
+17. [Project layout and docs](#project-layout-and-docs)
+
+---
+
+## Quick start
+
+1. Download `AgentMon-1.0.2-windows-x64.zip` and `AgentMon-1.0.2-android.apk` from [Releases](../../releases).
+2. **Computer:** unzip to a permanent folder and start `AgentMon\AgentMon.exe`, then add the `cli` folder to PATH.
+   ([Step 1](#step-1-install-on-the-computer))
+3. **Phone:** install the APK. ([Step 2](#step-2-install-the-phone-app))
+4. **Connection:** for use anywhere, set up a tunnel and enter its address under **Overview → This computer → Phone
+   access address**. To try it on your desk first, use a USB cable.
+   ([Step 3](#step-3-choose-how-the-phone-reaches-the-computer))
+5. **Pair:** in AgentMon click **Pair device** and scan the QR code with the app. ([Step 4](#step-4-pair-your-phone))
+6. **Use:** in your project folder run `agentmon claude`. The session appears on the phone.
+   ([Step 5](#step-5-start-claude-through-agentmon))
 
 ---
 
@@ -36,26 +57,27 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 
 ```
  Phone (AgentMon app)
-        │  WebSocket, signed with a key that never leaves the phone
+        │  encrypted WebSocket; the phone proves who it is with a key that never leaves it
         ▼
- Cloudflare tunnel  ──or──  USB cable (adb reverse)
+ your tunnel (e.g. Cloudflare)  ──or──  USB cable (adb reverse)
         │
         ▼
- Desktop agent (AgentMon.exe, tray)  listening on 127.0.0.1:8787 only
+ Desktop agent (AgentMon.exe, in the tray)  listening on 127.0.0.1:8787 only
         ▲                      ▲
         │ hooks (HTTP)         │ terminal link (WebSocket)
- Claude Code  ◄──────────  agentmon claude  (wrapper around Claude's terminal)
+ Claude Code  ◄──────────  agentmon claude  (runs Claude and mirrors its terminal)
 ```
 
-1. When you add a project, the agent writes Claude Code **hooks** into that project's
-   `.claude/settings.local.json`. Claude then reports every step to the agent: prompt sent, tool used,
+1. **Hooks.** For every project it watches, the agent writes Claude Code hooks into that project's
+   `.claude/settings.local.json`. Claude then reports each step to the agent: prompt sent, tool used,
    permission needed, finished, and so on.
-2. If you start Claude with **`agentmon claude`**, the wrapper runs Claude in a pseudo-terminal and mirrors
-   its screen to the agent. That lets the phone show the real terminal and type into it.
-3. The agent never opens a port to your network. The phone reaches it through a **Cloudflare tunnel**, which
-   forwards to `127.0.0.1:8787`, or through a **USB cable** with `adb reverse`.
+2. **The wrapper.** When you start Claude with **`agentmon claude`**, the wrapper runs Claude in a pseudo-terminal
+   and mirrors its screen to the agent. The phone can then show the real terminal and type into it. In your own
+   terminal, Claude looks and works exactly as usual.
+3. **The connection.** The agent never opens a port to your network. The phone reaches it through **your tunnel**,
+   which forwards an `https://` address to `127.0.0.1:8787`, or through a **USB cable** with `adb reverse`.
 
-There are three ways a session can be controlled:
+What the phone can do depends on how Claude was started:
 
 | Started with | Phone can see | Phone can control |
 |---|---|---|
@@ -67,79 +89,180 @@ There are three ways a session can be controlled:
 
 ## What you need
 
-- **Windows 10 or 11** (64-bit).
+- **Windows 10 or 11**, 64-bit.
 - **Claude Code**, installed and logged in: `claude` must work in a terminal.
-- An **Android phone**, Android 7.0 (API 24) or newer.
-- To use it away from home: a domain on **Cloudflare** (free plan) for the tunnel. At home, a USB cable is enough.
+- An **Android phone** with Android 7.0 or newer.
+- One way for the phone to reach the computer:
+  - **for use anywhere:** a tunnel, for example a free Cloudflare Tunnel on a domain you own ([Option B](#option-b-your-own-tunnel-use-it-anywhere));
+  - **for trying it on your desk:** a USB cable and Android's platform tools ([Option A](#option-a-usb-cable)).
 
-The release builds carry their own Java. Nothing else needs installing.
+The Windows download carries its own Java. Nothing else needs installing for AgentMon itself.
 
 ---
 
-## Install (release)
+## Step 1: Install on the computer
 
 Download from the [Releases](../../releases) page:
 
 | File | What it is |
 |---|---|
-| `AgentMon-1.0.1-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
-| `AgentMon-1.0.1-android.apk` | Phone app |
+| `AgentMon-1.0.2-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
+| `AgentMon-1.0.2-android.apk` | Phone app |
 
-### On the computer
-
-1. **Unzip** `AgentMon-1.0.1-windows-x64.zip` to a permanent place, for example `C:\Users\<you>\AgentMon`.
+1. **Unzip** `AgentMon-1.0.2-windows-x64.zip` to a folder you will keep, for example `C:\Users\<you>\AgentMon`.
+   You get:
+   ```
+   AgentMon-1.0.2-windows-x64\
+     AgentMon\AgentMon.exe     the desktop agent
+     cli\agentmon.exe          the wrapper you run instead of "claude"
+     README.txt
+   ```
    Don't run it from the Downloads folder if you plan to turn on "Start with Windows".
-2. **Start the agent:** double-click `AgentMon\AgentMon.exe`. A window opens and an icon appears in the tray.
-   Closing the window keeps it running in the tray; use the tray menu to quit.
-   Windows SmartScreen may warn about an unknown publisher (the app is not code-signed). Choose
-   **More info → Run anyway**.
+2. **Start the agent:** double-click `AgentMon\AgentMon.exe`. A window opens and an AgentMon icon appears in the
+   tray, next to the clock.
+   - Windows SmartScreen may warn about an unknown publisher, because the app is not code-signed. Click
+     **More info → Run anyway**.
+   - If Windows Firewall asks about network access, you can choose **Cancel**. The agent only talks to this computer.
 3. **Put the wrapper on your PATH**, so `agentmon` works in every terminal:
    - Press **Win**, type **environment**, and open **Edit environment variables for your account**.
-   - Under **User variables**, select **Path**, then click **Edit…**, then **New**.
-   - Paste the full path of the `cli` folder, for example `C:\Users\<you>\AgentMon\AgentMon-1.0.1-windows-x64\cli`.
-   - Click **OK** on every window. **Restart** any open terminals and Android Studio.
-   - Check it in a new terminal: `agentmon --version`.
+   - Under **User variables**, select **Path**, click **Edit…**, then **New**.
+   - Paste the full path of the `cli` folder, for example
+     `C:\Users\<you>\AgentMon\AgentMon-1.0.2-windows-x64\cli`.
+   - Click **OK** on every window.
+   - **Close and reopen** your terminals. In Android Studio, close and reopen the IDE.
+   - Check it in a new terminal: `agentmon --version` should print `agentmon 1.0.2`.
 
-   Or do it in PowerShell:
+   Or do the same in PowerShell:
    ```powershell
-   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.1-windows-x64\cli"
+   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.2-windows-x64\cli"
    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User").TrimEnd(";") + ";" + $dir, "User")
    ```
-4. Optional: on the agent's **Overview** tab, turn on **Start with Windows**, so the phone can reach your computer
-   after a restart. **Stay awake while Claude works** is on by default; it keeps Windows from sleeping while a
+4. **Optional:** on the agent's **Overview** tab, turn on **Start with Windows**, so the phone can reach your
+   computer after a restart. **Stay awake while Claude works** is on by default: Windows won't go to sleep while a
    session runs.
-
-### On the phone
-
-1. Copy `AgentMon-1.0.1-android.apk` to the phone, or download it there, and open it.
-2. Allow **Install unknown apps** for your browser or file manager when Android asks.
-3. Open **AgentMon** and allow notifications.
 
 ---
 
-## Pair your phone
+## Step 2: Install the phone app
+
+1. Get `AgentMon-1.0.2-android.apk` onto the phone: open the Releases page in the phone's browser and download
+   it, or copy it over by cable or cloud drive.
+2. Tap the file. When Android asks, allow **Install unknown apps** for your browser or file manager, then tap
+   **Install**. Play Protect may warn that the app is unknown; choose **Install anyway**.
+3. Open **AgentMon** and allow notifications. They tell you when Claude needs you.
+
+---
+
+## Step 3: Choose how the phone reaches the computer
+
+| | Option A: USB cable | Option B: your own tunnel |
+|---|---|---|
+| Works | Only while the phone is plugged into the computer | Anywhere: mobile data, any Wi-Fi |
+| You need | USB debugging and Android's platform tools | A tunnel, e.g. a domain on Cloudflare (free plan) |
+| Setup time | 5 minutes | 20–30 minutes, once |
+| Best for | Trying AgentMon out | Daily use, being away from your desk |
+
+You can start with USB and add a tunnel later. Phones are then paired again with **Anywhere**.
+
+### Option A: USB cable
+
+The phone talks to the agent through the cable using `adb reverse`.
+
+1. **Turn on USB debugging** on the phone:
+   - **Settings → About phone**, tap **Build number** seven times until it says you are a developer. On Xiaomi,
+     tap **MIUI version** instead.
+   - **Settings → System → Developer options**, turn on **USB debugging**.
+2. **Install Android's platform tools** on the computer. They include `adb`:
+   ```powershell
+   winget install Google.PlatformTools
+   ```
+   Open a new terminal afterwards. If you have Android Studio, `adb` is already in
+   `%LOCALAPPDATA%\Android\Sdk\platform-tools`.
+3. **Connect the phone** by USB. On the phone, accept **Allow USB debugging?** Then check with `adb devices`; the
+   phone should be listed as `device`.
+4. **Forward the agent's port** to the phone:
+   ```powershell
+   adb reverse tcp:8787 tcp:8787
+   ```
+   Run this again **every time** you plug the phone back in or restart the computer.
+5. Continue with [Step 4](#step-4-pair-your-phone) and choose **USB · adb reverse**.
+
+### Option B: your own tunnel (use it anywhere)
+
+A tunnel gives your computer a public `https://` address, for example `https://agent.example.com`, without
+opening any port. The tunnel program on your computer keeps an outgoing connection to the tunnel service, and
+passes the phone's requests to the agent at `http://localhost:8787`. You don't need router settings or a fixed IP.
+
+**AgentMon itself needs only one setting: your address.** Everything else is setting up the tunnel.
+
+**The full step-by-step guide is [docs/tunnel.md](docs/tunnel.md).** It covers Cloudflare from start to finish,
+including running it as a Windows service, ngrok and Tailscale Funnel, and troubleshooting. In short, with
+Cloudflare:
+
+1. **Get a domain onto Cloudflare** (free plan): add the domain at dash.cloudflare.com, change its nameservers at
+   your registrar to the two Cloudflare gives you, and wait until it shows **Active**.
+2. **Install cloudflared** with `winget install --id Cloudflare.cloudflared`, then in a new terminal:
+   ```powershell
+   cloudflared tunnel login                                   # pick your domain in the browser
+   cloudflared tunnel create agentmon                         # note the tunnel ID it prints
+   cloudflared tunnel route dns agentmon agent.example.com    # your chosen hostname
+   ```
+3. **Write `%USERPROFILE%\.cloudflared\config.yml`:**
+   ```yaml
+   tunnel: <TUNNEL-ID>
+   credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL-ID>.json
+   ingress:
+     - hostname: agent.example.com
+       service: http://localhost:8787
+     - service: http_status:404
+   ```
+4. **Test it:** with AgentMon running, start `cloudflared tunnel run agentmon`. Turn off Wi-Fi on the phone and open
+   `https://agent.example.com/health` in its browser. You should see `{"status":"ok",...}`.
+5. **Make it permanent:** install the tunnel as a Windows service so it starts with the computer
+   ([docs/tunnel.md, step 7](docs/tunnel.md#7-run-the-tunnel-as-a-windows-service)).
+6. **Tell AgentMon your address:** in the AgentMon window, go to **Overview → This computer → Phone access
+   address**, type `agent.example.com` and click **Save**.
+   - Only `https` hostnames are accepted, and `https://` is added for you.
+   - The address is saved in `%APPDATA%\AgentMon\settings.properties` and kept across restarts and updates.
+   - Leave the field empty to pair over USB only.
+   - Advanced: `AGENTMON_PUBLIC_URL`, or `AgentMon.exe --public-url https://…`, overrides the field.
+7. Continue with [Step 4](#step-4-pair-your-phone) and choose **Anywhere**.
+
+Rules for any tunnel:
+
+- The address must be `https://`, because the phone refuses plain `http://`.
+- The tunnel must forward to `http://localhost:8787`, pass WebSockets through, and keep the same address. If the
+  address changes, every phone must pair again.
+- No login page may sit in front of the address, such as Cloudflare Access. The app can't sign in through a
+  browser page, and AgentMon already only admits paired phones.
+
+Claude's hooks and the `agentmon claude` terminal link are refused when they arrive through any tunnel. They must
+come from the computer itself.
+
+---
+
+## Step 4: Pair your phone
 
 Pairing happens once per phone. Only phones you approve on the computer can connect.
 
-1. On the computer, in AgentMon, open **Devices** and click **Pair device**.
-2. Pick how the phone will reach the computer:
-   - **Anywhere · your-tunnel-host**: over the internet, through your Cloudflare tunnel. Until you set your
-     address under **Overview → This computer → Phone access address**, it reads *not set up*. See
-     [the tunnel section](#reach-your-computer-from-anywhere-cloudflare-tunnel).
-   - **USB · adb reverse**: over a USB cable. Run `adb reverse tcp:8787 tcp:8787` after plugging in.
-3. A QR code appears. On the phone, tap **Pair with your computer** and scan it. If the camera can't read it,
-   paste the code shown under the QR instead (it starts with `AGENTMON1:`).
-4. Check that the fingerprint matches on both screens, then **approve** on the computer. Choose:
-   - **Which projects** the phone may see (all, or only some).
-   - Whether it may **send input** (reply, approve, type, stop) or is **read-only**.
+1. On the computer, click **Pair device** (bottom left in AgentMon, or **Devices → Pair device**).
+2. The dialog picks the route that works right now:
+   - **Anywhere · agent.example.com** when your tunnel answers. It reads *not set up* while no address is saved.
+   - **USB · adb reverse** otherwise. Make sure `adb reverse tcp:8787 tcp:8787` was run.
+3. On the phone, open AgentMon, tap **Pair with your computer** and scan the QR code. If the camera can't read it,
+   copy the code shown under the QR (it starts with `AGENTMON1:`) to the phone and paste it.
+4. The phone shows the computer's fingerprint, and the computer shows the phone's. Check they match.
+5. On the computer, **approve** the phone and choose:
+   - **which projects** it may see: all, or only some;
+   - whether it may **send input** (reply, approve, type, stop) or is **read-only**.
+6. The phone opens its Home screen and shows **Connected**.
 
-You can change or revoke a phone at any time in **Devices**. Revoking disconnects it at once.
+The QR code is valid for 2 minutes and works once; click **New code** if it expires. You can change a phone's
+access or **revoke** it at any time in **Devices**. Revoking disconnects it at once.
 
 ---
 
-## Use it every day
-
-### Start Claude so the phone can control it
+## Step 5: Start Claude through AgentMon
 
 In any terminal (Windows Terminal, PowerShell, or the **Android Studio terminal**), go to your project and run:
 
@@ -147,7 +270,7 @@ In any terminal (Windows Terminal, PowerShell, or the **Android Studio terminal*
 agentmon claude
 ```
 
-Anything after `claude` is passed through to Claude Code, for example:
+instead of `claude`. Anything after `claude` is passed on to Claude Code:
 
 ```
 agentmon claude --dangerously-skip-permissions
@@ -155,77 +278,76 @@ agentmon claude --resume
 agentmon claude --model sonnet
 ```
 
-The session appears on the phone right away under its project name. If the folder wasn't monitored yet,
-AgentMon adds it by itself: it installs the hooks and adds `.claude/settings.local.json` to that project's
-`.gitignore`. Your home folder, folders above it, and drive roots are never added. Phones that were limited
-to chosen projects still need you to grant the new one in **Devices**.
+What happens:
 
-**In Android Studio:** open the **Terminal** tool window and press **+** for a new tab. The tab opens in the
-project folder; run `agentmon claude` there. If `agentmon` isn't found, Android Studio was started before you
-changed PATH. Restart Android Studio, or refresh the tab once:
+- Claude starts in your terminal exactly as usual, and you can keep working there.
+- The session appears on the phone right away, under the project's name, for example "ShopKart". The name comes
+  from Android Studio, the Gradle or package file, or the folder name.
+- The first time you run it in a folder, AgentMon starts watching that folder: it installs the hooks and adds
+  `.claude/settings.local.json` to the project's `.gitignore`. Your home folder, folders above it, and drive roots
+  are never added. Phones limited to chosen projects need the new project granted in **Devices**.
+- On the phone, open the session to see Claude's latest reply, the activity, and the live **Terminal**. Type a
+  message at the bottom and it is typed into Claude's terminal on the computer.
+
+**In Android Studio:** open the **Terminal** tool window (Alt+F12) and press **+** for a new tab. It opens in the
+project folder; run `agentmon claude` there. If `agentmon` isn't found, Android Studio was started before PATH was
+changed. Restart Android Studio, or refresh the tab once:
 
 ```powershell
 $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
 ```
 
+In PowerShell, a quoted path needs `&` in front: `& "C:\…\cli\agentmon.exe" claude`. With the `cli` folder on
+PATH, just type `agentmon claude`.
+
+---
+
+## Running the agent
+
+- **Start:** `AgentMon\AgentMon.exe`. With **Start with Windows** on, it starts by itself in the tray when you sign in.
+- **Open the window:** double-click the tray icon. **Closing the window** keeps the agent running in the tray.
+- **Quit:** right-click the tray icon → **Quit**. Phones then show the computer as offline, and Claude keeps
+  working normally.
+- **Is it running?** The tray icon is there, and `http://127.0.0.1:8787/health` in a browser on the computer shows
+  `{"status":"ok",...}`.
+- **Update:** quit the agent, unzip the new release over the old folder (or into a new one, and update PATH and
+  Start with Windows), then start it again. Pairings, projects and settings live in `%APPDATA%\AgentMon` and are kept.
+  On the phone, install the new APK over the old app.
+- **Uninstall:**
+  1. In the agent, **Projects → Remove** each project, which removes its hooks.
+  2. Turn off **Start with Windows** and quit.
+  3. Delete the program folder and `%APPDATA%\AgentMon`, and remove the `cli` folder from PATH.
+  4. Uninstall the app on the phone.
+
+---
+
+## Everyday use
+
 ### Plain `claude` works too
 
-Sessions started with plain `claude` in a monitored project still show on the phone, through the hooks. To
-answer them from the phone, turn on **Away mode** (below).
+Sessions started with plain `claude` in a watched project still show on the phone, through the hooks. To answer
+them from the phone, turn on **Away mode**.
 
 ### Away mode: when you leave your desk
 
 Turn on **Away mode** on the phone or in the agent. While it is on:
 
 - A **permission prompt** waits for the phone: approve or deny it there.
-- When Claude **finishes**, it waits for your next instruction from the phone instead of going idle.
-  Reply to keep it working, or tap **Let it stop**.
+- When Claude **finishes**, it waits for your next instruction from the phone instead of going idle. Reply to keep
+  it working, or tap **Let it stop**.
 - The computer stays awake.
 
 Turn Away mode off when you are back, and Claude behaves exactly as usual at the computer.
 
-### Add a project by hand
+### Continue an old conversation
 
-In the agent, open **Projects → Add project** and pick the folder. This installs the hooks without starting
-the wrapper. **Remove** uninstalls them.
+On the phone, tap **History** next to a project, pick a conversation and type a message. The computer continues it
+in the background with your normal Claude login.
 
----
+### Add or remove a project by hand
 
-## Reach your computer from anywhere (Cloudflare tunnel)
-
-The agent only listens on `127.0.0.1`. To reach it over mobile data, run a Cloudflare tunnel that forwards a
-hostname of yours to `http://localhost:8787`.
-
-1. Add your domain to Cloudflare (free plan) and wait until it shows **Active**.
-2. Install cloudflared: `winget install --id Cloudflare.cloudflared`
-3. Run `cloudflared tunnel login` and pick your domain.
-4. Run `cloudflared tunnel create agentmon` and note the tunnel ID.
-5. Run `cloudflared tunnel route dns agentmon agent.<your-domain>`
-6. Create `%USERPROFILE%\.cloudflared\config.yml`:
-   ```yaml
-   tunnel: <TUNNEL-ID>
-   credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL-ID>.json
-   ingress:
-     - hostname: agent.<your-domain>
-       service: http://localhost:8787
-     - service: http_status:404
-   ```
-7. Test it with `cloudflared tunnel run agentmon`, then open `https://agent.<your-domain>/health` on the phone
-   over mobile data. It should show `{"status":"ok",...}`.
-8. Run it as a service: `cloudflared service install` from an **Administrator** terminal. The full steps,
-   including a Windows service gotcha, are in [docs/setup.md](docs/setup.md#c-cloudflare-tunnel-phase-2-remote-access-over-mobile-data).
-9. **Tell AgentMon your address.** In the agent window, open **Overview**. Under **This computer → Phone access
-   address**, type your hostname, for example `agent.<your-domain>`, and click **Save**. Only `https://`
-   addresses are accepted; `https://` is added for you.
-   - The address goes into every pairing QR code for the **Anywhere** route, and it is saved in
-     `%APPDATA%\AgentMon\settings.properties`, so it survives restarts and updates.
-   - Leave the field empty to pair over USB only.
-   - Advanced: `AGENTMON_PUBLIC_URL` (environment variable) or `AgentMon.exe --public-url https://…` override the
-     saved address. The field then shows where it comes from and can't be edited.
-10. Pair the phone with the **Anywhere** option. If you already paired over USB, pair again with **Anywhere**:
-    the address is part of the pairing.
-
-Hooks and the wrapper link are refused when they arrive through the tunnel. They must come from the computer itself.
+In the agent, **Projects → Add project** watches a folder without starting the wrapper. **Remove** stops watching it
+and removes its hooks.
 
 ---
 
@@ -372,19 +494,19 @@ a JDK first, for example `winget install EclipseAdoptium.Temurin.21.JDK`.
 
 ```powershell
 $env:JPACKAGE_JDK = "C:\Program Files\Java\jdk-24"   # your JDK with jpackage
-.\scripts\package-release.ps1 -Version 1.0.1
+.\scripts\package-release.ps1 -Version 1.0.2
 ```
 
 This writes to `dist\`:
 
-- `AgentMon-1.0.1-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
-- `AgentMon-1.0.1-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
+- `AgentMon-1.0.2-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
+- `AgentMon-1.0.2-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
   key and keep it out of git; `*.jks` and `*.keystore` are ignored.
 
 Then upload both files to a new GitHub release, either through **Releases → Draft a new release** on GitHub, or:
 
 ```powershell
-gh release create v1.0.1 dist\AgentMon-1.0.1-windows-x64.zip dist\AgentMon-1.0.1-android.apk --title "AgentMon 1.0.1" --notes "First release"
+gh release create v1.0.2 dist\AgentMon-1.0.2-windows-x64.zip dist\AgentMon-1.0.2-android.apk --title "AgentMon 1.0.2" --notes "First release"
 ```
 
 ---
@@ -400,7 +522,8 @@ gh release create v1.0.1 dist\AgentMon-1.0.1-windows-x64.zip dist\AgentMon-1.0.1
 
 | Document | Contents |
 |---|---|
-| [docs/setup.md](docs/setup.md) | Step-by-step setup, including the Cloudflare service details |
+| [docs/tunnel.md](docs/tunnel.md) | Your own tunnel for use anywhere: Cloudflare step by step, other tunnels, troubleshooting |
+| [docs/setup.md](docs/setup.md) | The development machine's setup log (maintainer notes) |
 | [docs/protocol.md](docs/protocol.md) | The phone ↔ computer protocol |
 | [docs/threat-model.md](docs/threat-model.md) | Security model |
 | [PROJECT-GUIDE.md](PROJECT-GUIDE.md) | Architecture, decisions and milestone progress |

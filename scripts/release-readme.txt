@@ -16,5 +16,8 @@ Quick start
 4. In your project folder run:   agentmon claude
    The session appears on the phone at once.
 5. Optional: on the agent's Overview tab turn on "Start with Windows".
+6. To use the phone away from home, set up a tunnel and enter its address under
+   Overview > This computer > Phone access address. Guide:
+   https://github.com/Dev-Husnain/ClaudeAndCodexMonitoring/blob/main/docs/tunnel.md
 
 Full guide: https://github.com/Dev-Husnain/ClaudeAndCodexMonitoring#readme

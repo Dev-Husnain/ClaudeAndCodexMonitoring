@@ -76,6 +76,20 @@ class HookEndpointTest {
     }
 
     @Test
+    fun `hooks forwarded by any other tunnel or proxy are refused too`() = testApplication {
+        setUp()
+        listOf("X-Forwarded-For" to "198.51.100.7", "X-Real-IP" to "198.51.100.7", "Forwarded" to "for=198.51.100.7").forEach { (name, value) ->
+            val response = client.post("/hook") {
+                header(HookInstaller.SECRET_HEADER, secret)
+                header(name, value)
+                setBody(body("Stop"))
+            }
+            assertEquals(HttpStatusCode.Forbidden, response.status, name)
+        }
+        assertNull(agent.registry.session("real-1"))
+    }
+
+    @Test
     fun `events from folders that are not monitored are ignored`() = testApplication {
         setUp()
         val response = client.post("/hook") {

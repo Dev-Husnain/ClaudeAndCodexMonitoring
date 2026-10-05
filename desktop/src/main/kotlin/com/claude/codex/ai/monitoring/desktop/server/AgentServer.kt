@@ -12,6 +12,7 @@ import com.claude.codex.ai.monitoring.protocol.PairStatus
 import com.claude.codex.ai.monitoring.protocol.PairingCode
 import com.claude.codex.ai.monitoring.protocol.ProtocolConstants
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -98,17 +99,28 @@ fun Application.agentModule(
     }
 }
 
-/** The tunnel also terminates on 127.0.0.1; its requests carry Cloudflare headers. */
-private fun ApplicationCall.viaTunnel(): Boolean =
-    request.headers["CF-Connecting-IP"] != null || request.headers["Cf-Ray"] != null
+/**
+ * A tunnel also ends on 127.0.0.1, so its requests are recognised by the headers it adds: Cloudflare's own,
+ * or the standard forwarding headers other tunnels and proxies (ngrok, Tailscale Funnel, nginx…) set.
+ * Claude Code's hooks and the wrapper never send any of them.
+ */
+internal fun Headers.viaTunnel(): Boolean = TUNNEL_HEADERS.any { contains(it) }
+
+private fun ApplicationCall.viaTunnel(): Boolean = request.headers.viaTunnel()
 
 /**
- * The client address. Through the Cloudflare tunnel every request comes from 127.0.0.1, so the
- * real address is taken from `CF-Connecting-IP`. The server is loopback-only, so only local
- * processes could forge it, and they are also limited per device.
+ * The client address. Through a tunnel every request comes from 127.0.0.1, so the real address is taken
+ * from `CF-Connecting-IP`, else the first `X-Forwarded-For` / `X-Real-IP` entry. The server is loopback-only,
+ * so only local processes could forge it, and they are also limited per device.
  */
-private fun ApplicationCall.remoteAddress(): String =
-    request.headers["CF-Connecting-IP"] ?: request.origin.remoteHost
+internal fun Headers.forwardedFor(): String? =
+    get("CF-Connecting-IP")?.trim()?.ifEmpty { null }
+        ?: get("X-Forwarded-For")?.substringBefore(',')?.trim()?.ifEmpty { null }
+        ?: get("X-Real-IP")?.trim()?.ifEmpty { null }
+
+private fun ApplicationCall.remoteAddress(): String = request.headers.forwardedFor() ?: request.origin.remoteHost
+
+private val TUNNEL_HEADERS = listOf("CF-Connecting-IP", "Cf-Ray", "X-Forwarded-For", "X-Forwarded-Host", "X-Real-IP", "Forwarded")
 
 private fun PairStatus.httpStatus(): HttpStatusCode = when (this) {
     PairStatus.APPROVED -> HttpStatusCode.OK

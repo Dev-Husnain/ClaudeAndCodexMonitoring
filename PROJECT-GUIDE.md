@@ -210,6 +210,20 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Feature: README restructure + v1.0.2
+- [x] README: quick start, then numbered steps (install computer, install phone, choose USB or own tunnel incl.
+  adb/USB-debugging setup, pair, start Claude), running/updating/uninstalling the agent, everyday use
+- [x] Released v1.0.2 (forwarding-header detection + docs); phone updated and connected through the tunnel
+
+### Feature: Own-tunnel guide
+- [x] `docs/tunnel.md`: a general guide for any owner: requirements for any tunnel, Cloudflare step by step (incl. the
+  Windows service ImagePath fix), ngrok and Tailscale Funnel (marked untested), what does not work (port forwarding,
+  http, Cloudflare Access), setting the address, re-pairing, changing it later, security, troubleshooting.
+  README links to it; `docs/setup.md` is marked as this machine's log
+- [x] Tunnel traffic is now also recognised by standard forwarding headers (`X-Forwarded-For`, `X-Real-IP`,
+  `Forwarded`, `X-Forwarded-Host`), so hooks and the wrapper link stay local-only behind any tunnel, and rate
+  limits use the real client address. Test (1)
+
 ### Feature: Clear the activity log (v1.0.1)
 - [x] Activity tab: **Clear activity** with an inline confirmation; deletes every entry and records one
   "Activity log cleared" entry, so a wipe is never silent. Test (1). Real test: button and confirmation shown

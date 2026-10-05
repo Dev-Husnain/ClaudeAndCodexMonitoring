@@ -11,7 +11,7 @@
 
 | Boundary | Protection | Status |
 |---|---|---|
-| LAN / internet → desktop agent | The server binds **127.0.0.1 only**. The only ways in are the outbound Cloudflare tunnel and USB `adb reverse`. | Done (M0/M1) |
+| LAN / internet → desktop agent | The server binds **127.0.0.1 only**. The only ways in are the owner's outbound tunnel (Cloudflare; others such as ngrok work the same way) and USB `adb reverse`. | Done (M0/M1) |
 | Phone ↔ Cloudflare edge | TLS (`wss://`). The app refuses `ws://` for any non-loopback host. | Done (M1) |
 | Cloudflare edge → agent | Mutual device authentication (P-256 challenge/response, pinned desktop key); Cloudflare only carries bytes. | Done (M3) |
 | Other local processes → `/hook` | Loopback only plus a shared secret header. | Phase 4 |
@@ -23,7 +23,7 @@
    spec 6.5). Authentication is end to end: a compromised edge cannot impersonate either side.
 2. Anyone who can photograph the pairing QR within its 2 minutes can send a pairing request, but
    nothing is granted until the owner approves it on the laptop and compares the key fingerprint.
-3. A local process on the laptop could forge `CF-Connecting-IP` to dodge per-IP limits. Per-device
+3. A local process on the laptop could forge `CF-Connecting-IP` / `X-Forwarded-For` to dodge per-IP limits. Per-device
    limits still apply, and local processes are already trusted with far more.
 4. `/hook` (phase 4) is not built yet.
 

@@ -2,7 +2,7 @@ package com.claude.codex.ai.monitoring.cli
 
 import kotlin.system.exitProcess
 
-private const val VERSION = "1.0.1"
+private const val VERSION = "1.0.2"
 
 private val USAGE = """
     agentmon $VERSION: run Claude Code so AgentMon can show its terminal and type into it from your phone.
