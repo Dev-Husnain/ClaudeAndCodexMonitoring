@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -32,7 +31,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.AppTheme
 import com.claude.codex.ai.monitoring.core.theme.Dimens
-import com.claude.codex.ai.monitoring.core.theme.PillShape
 import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.ui.color
 
@@ -59,13 +57,15 @@ fun SessionComposer(
         AnimatedVisibility(visible = note != null) {
             Text(note.orEmpty(), style = MaterialTheme.typography.labelMedium, color = noteTone.color())
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+        // Bottom-aligned: the send button stays next to the last line while the message grows.
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+            val fieldShape = MaterialTheme.shapes.extraLarge
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = Dimens.TouchTarget)
-                    .background(colors.surfaceElevated, PillShape)
-                    .border(Dimens.BorderThin, colors.outline, PillShape)
+                    .background(colors.surfaceElevated, fieldShape)
+                    .border(Dimens.BorderThin, colors.outline, fieldShape)
                     .padding(horizontal = Dimens.SpaceLg, vertical = Dimens.SpaceMd),
                 contentAlignment = Alignment.CenterStart,
             ) {
@@ -77,9 +77,9 @@ fun SessionComposer(
                     onValueChange = onTextChange,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.textPrimary),
                     cursorBrush = SolidColor(colors.brandStart),
-                    maxLines = 5,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { if (canSend) onSend() }),
+                    // Enter starts a new line; the button sends.
+                    maxLines = MAX_LINES,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Default),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -104,6 +104,8 @@ fun SessionComposer(
         }
     }
 }
+
+private const val MAX_LINES = 6
 
 @Preview
 @Composable
