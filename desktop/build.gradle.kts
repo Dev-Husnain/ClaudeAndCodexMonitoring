@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.jediterm.core)
     implementation(libs.jna)
+    implementation(libs.jna.platform)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)

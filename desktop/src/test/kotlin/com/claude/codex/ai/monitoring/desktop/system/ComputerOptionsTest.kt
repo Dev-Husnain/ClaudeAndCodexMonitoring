@@ -35,28 +35,38 @@ class ComputerOptionsTest {
         assertEquals(listOf(true, false, true, false, true), calls)
     }
 
+    private class FakeRunKey : RunKey {
+        var value: String? = null
+        override fun get() = value
+        override fun set(command: String) {
+            value = command
+        }
+        override fun remove() {
+            value = null
+        }
+    }
+
     @Test
-    fun `starting with Windows registers the installed copy in the per-user Run key`() {
-        val commands = mutableListOf<List<String>>()
-        val launch = AutoStart.InstalledLaunch(Path.of("C:\\jdk\\bin\\javaw.exe"), Path.of("C:\\Users\\me\\AppData\\Local\\AgentMon\\agent\\lib"))
-        val autoStart = AutoStart(runReg = { commands += it; 0 to "" }, currentLaunch = { launch }, isWindows = true)
+    fun `starting with Windows registers the installed copy in the per-user Run key, and can be undone`() {
+        val key = FakeRunKey()
+        val launch = AutoStart.InstalledLaunch(Path.of("""C:\jdk\bin\javaw.exe"""), Path.of("""C:\Users\me\AppData\Local\AgentMon\agent\lib"""))
+        val autoStart = AutoStart(runKey = key, currentLaunch = { launch }, isWindows = true)
         autoStart.enable()
         assertEquals(
-            listOf(
-                "add", AutoStart.RUN_KEY, "/v", "AgentMon", "/t", "REG_SZ", "/d",
-                "\"C:\\jdk\\bin\\javaw.exe\" -cp \"C:\\Users\\me\\AppData\\Local\\AgentMon\\agent\\lib\\*\" " +
-                    "com.claude.codex.ai.monitoring.desktop.MainKt --background",
-                "/f",
-            ),
-            commands.single(),
+            """"C:\jdk\bin\javaw.exe" --enable-native-access=ALL-UNNAMED -cp "C:\Users\me\AppData\Local\AgentMon\agent\lib\*" """ +
+                "com.claude.codex.ai.monitoring.desktop.MainKt --background",
+            key.value,
         )
+        assertTrue(autoStart.isEnabled())
+        autoStart.disable()
+        assertFalse(autoStart.isEnabled())
     }
 
     @Test
     fun `a copy running from Gradle cannot be registered, and other systems are not offered it`() {
-        val notInstalled = AutoStart(runReg = { 1 to "" }, currentLaunch = { null }, isWindows = true)
+        val notInstalled = AutoStart(runKey = FakeRunKey(), currentLaunch = { null }, isWindows = true)
         assertTrue(assertFailsWith<AutoStartException> { notInstalled.enable() }.message!!.contains("install-agent"))
-        val linux = AutoStart(runReg = { error("must not run reg") }, currentLaunch = { null }, isWindows = false)
+        val linux = AutoStart(runKey = FakeRunKey(), currentLaunch = { null }, isWindows = false)
         assertFalse(linux.supported)
         assertFalse(linux.isEnabled())
         linux.disable()

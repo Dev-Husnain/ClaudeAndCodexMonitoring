@@ -182,14 +182,17 @@ DataStore. It is covered by the manual gate above.
 ### Feature: Hardening (M8, spec phase 8), first part
 - [x] **Stay awake while Claude works** (default on): `SetThreadExecutionState(ES_SYSTEM_REQUIRED)` through JNA on one
   dedicated thread while a session runs, waits or is held, or Away mode is on; the display may still sleep
-- [x] **Start with Windows**: per-user `Run` key → installed copy (`:desktop:installAgent` → `%LOCALAPPDATA%\AgentMon\agent`,
+- [x] **Start with Windows**: per-user `Run` key (written with JNA `Advapi32Util`) → installed copy (`:desktop:installAgent` → `%LOCALAPPDATA%\AgentMon\agent`,
   `javaw` + jars, `--background` starts in the tray); refuses to register a copy running from Gradle's build folders
 - [x] "This computer" card on the desktop Overview with both switches; settings in `settings.properties`
 - [x] Tests (4): keep-awake decisions, Run-key command, not-installed/other-OS refusal, settings persistence;
   153 tests in total (app 62, shared 17, desktop 72, cli 2)
 - [x] `installAgent` verified: folder with AgentMon.cmd and 76 jars incl. the Windows UI runtime (skiko), SQLite, JNA
-- [ ] Not verified: starting the installed copy and a real sign-in auto-start (the agent was stopped by Claude Code
-  for low memory and not restarted without the owner)
+- [x] Real test on this PC: the installed copy started without Gradle; "Start with Windows" wrote the Run key (first
+  attempt failed: `reg.exe` rejected the quoted value, now written through the Windows API); the exact Run-key
+  command started the agent in the tray with no window; the phone connected to it, a new `agentmon claude` terminal
+  showed up, and a prompt typed on the phone created the file on the PC
+- [ ] Not seen yet: an actual sign-in after a reboot
 - [ ] Remaining, needs the owner: an MSI/EXE installer needs a JDK with `jpackage` (the Android Studio JBR has none);
   optional end-to-end encryption on top of the tunnel's TLS; a TalkBack/large-font QA pass on the phone
 

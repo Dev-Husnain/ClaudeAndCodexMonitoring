@@ -80,6 +80,7 @@ jediterm-core = { group = "org.jetbrains.jediterm", name = "jediterm-core", vers
 pty4j = { group = "org.jetbrains.pty4j", name = "pty4j", version.ref = "pty4j" }
 jline-terminal-jni = { group = "org.jline", name = "jline-terminal-jni", version.ref = "jline" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+jna-platform = { group = "net.java.dev.jna", name = "jna-platform", version.ref = "jna" }
 slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4j" }
 
 [plugins]
