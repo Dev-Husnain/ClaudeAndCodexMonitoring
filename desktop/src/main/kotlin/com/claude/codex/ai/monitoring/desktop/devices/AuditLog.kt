@@ -33,6 +33,15 @@ class AuditLog(
         }
     }
 
+    /** Empties the log. One entry stays to show that, and when, it was cleared. */
+    fun clear() {
+        synchronized(this) {
+            queries.deleteAll()
+            queries.insert(clock(), AuditCategory.SERVER.name, "Activity log cleared", null, null)
+            _entries.value = load()
+        }
+    }
+
     private fun load(): List<AuditEntry> = queries.selectRecent(MAX_SHOWN).executeAsList().map {
         AuditEntry(
             id = it.id,

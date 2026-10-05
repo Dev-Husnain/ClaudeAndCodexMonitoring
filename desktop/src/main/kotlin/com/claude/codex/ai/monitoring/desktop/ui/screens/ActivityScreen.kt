@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.claude.codex.ai.monitoring.desktop.devices.AuditCategory
 import com.claude.codex.ai.monitoring.desktop.devices.AuditEntry
 import com.claude.codex.ai.monitoring.desktop.ui.components.DesktopCard
+import com.claude.codex.ai.monitoring.desktop.ui.components.OutlineButton
 import com.claude.codex.ai.monitoring.desktop.ui.components.Pill
 import com.claude.codex.ai.monitoring.desktop.ui.components.ToggleChip
 import com.claude.codex.ai.monitoring.desktop.ui.theme.DesktopTheme
@@ -34,10 +36,12 @@ import com.claude.codex.ai.monitoring.desktop.ui.toClockTime
 fun ActivityScreen(
     entries: List<AuditEntry>,
     deviceNames: Map<String, String>,
+    onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = DesktopTheme.colors
     var filter by remember { mutableStateOf<AuditCategory?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
     val shown = entries.filter { filter == null || it.category == filter }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -55,10 +59,23 @@ fun ActivityScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            ) {
                 ToggleChip("All", filter == null, { filter = null })
                 AuditCategory.entries.forEach { category ->
                     ToggleChip(category.label(), filter == category, { filter = category })
+                }
+                Spacer(Modifier.weight(1f))
+                // Two steps, like Revoke: the whole log goes, not only the filtered entries.
+                if (confirmClear) {
+                    Text("Clear the whole activity log?", style = MaterialTheme.typography.bodyMedium, color = colors.error)
+                    OutlineButton("Clear", onClick = { onClear(); confirmClear = false }, color = colors.error)
+                    OutlineButton("Cancel", onClick = { confirmClear = false }, color = colors.textSecondary)
+                } else if (entries.isNotEmpty()) {
+                    OutlineButton("Clear activity", onClick = { confirmClear = true }, color = colors.textSecondary)
                 }
             }
         }

@@ -6,7 +6,7 @@
 # Needs a JDK 17+ that includes jpackage (Android Studio's JBR does not). Point JPACKAGE_JDK at it, for example:
 #   $env:JPACKAGE_JDK = "C:\Program Files\Java\jdk-24"; .\scripts\package-release.ps1
 param(
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.0.1"
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot

@@ -210,6 +210,11 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Feature: Clear the activity log (v1.0.1)
+- [x] Activity tab: **Clear activity** with an inline confirmation; deletes every entry and records one
+  "Activity log cleared" entry, so a wipe is never silent. Test (1). Real test: button and confirmation shown
+- [x] Published releases: v1.0.0, then v1.0.1 with this change (a published tag is never moved)
+
 ### Feature: Release packaging + README
 - [x] `README.md`: install, pairing, daily use (incl. Android Studio terminal), tunnel, phone and desktop guides,
   security, troubleshooting, build and release steps

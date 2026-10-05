@@ -10,7 +10,7 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 - **`agentmon` wrapper.** Start Claude with `agentmon claude` instead of `claude`, and the phone can see that
   terminal and type into it.
 
-> Status: version 1.0.0, Windows + Android. Claude Code is supported; Codex is planned.
+> Status: version 1.0.1, Windows + Android. Claude Code is supported; Codex is planned.
 
 ---
 
@@ -82,12 +82,12 @@ Download from the [Releases](../../releases) page:
 
 | File | What it is |
 |---|---|
-| `AgentMon-1.0.0-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
-| `AgentMon-1.0.0-android.apk` | Phone app |
+| `AgentMon-1.0.1-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
+| `AgentMon-1.0.1-android.apk` | Phone app |
 
 ### On the computer
 
-1. **Unzip** `AgentMon-1.0.0-windows-x64.zip` to a permanent place, for example `C:\Users\<you>\AgentMon`.
+1. **Unzip** `AgentMon-1.0.1-windows-x64.zip` to a permanent place, for example `C:\Users\<you>\AgentMon`.
    Don't run it from the Downloads folder if you plan to turn on "Start with Windows".
 2. **Start the agent:** double-click `AgentMon\AgentMon.exe`. A window opens and an icon appears in the tray.
    Closing the window keeps it running in the tray; use the tray menu to quit.
@@ -96,13 +96,13 @@ Download from the [Releases](../../releases) page:
 3. **Put the wrapper on your PATH**, so `agentmon` works in every terminal:
    - Press **Win**, type **environment**, and open **Edit environment variables for your account**.
    - Under **User variables**, select **Path**, then click **Edit…**, then **New**.
-   - Paste the full path of the `cli` folder, for example `C:\Users\<you>\AgentMon\AgentMon-1.0.0-windows-x64\cli`.
+   - Paste the full path of the `cli` folder, for example `C:\Users\<you>\AgentMon\AgentMon-1.0.1-windows-x64\cli`.
    - Click **OK** on every window. **Restart** any open terminals and Android Studio.
    - Check it in a new terminal: `agentmon --version`.
 
    Or do it in PowerShell:
    ```powershell
-   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.0-windows-x64\cli"
+   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.1-windows-x64\cli"
    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User").TrimEnd(";") + ";" + $dir, "User")
    ```
 4. Optional: on the agent's **Overview** tab, turn on **Start with Windows**, so the phone can reach your computer
@@ -111,7 +111,7 @@ Download from the [Releases](../../releases) page:
 
 ### On the phone
 
-1. Copy `AgentMon-1.0.0-android.apk` to the phone, or download it there, and open it.
+1. Copy `AgentMon-1.0.1-android.apk` to the phone, or download it there, and open it.
 2. Allow **Install unknown apps** for your browser or file manager when Android asks.
 3. Open **AgentMon** and allow notifications.
 
@@ -294,7 +294,7 @@ Theme (system, light, dark), background alerts, battery optimisation, the paired
 | **Overview** | Agent status, connected phones, live sessions, and **This computer**: *Phone access address* (your tunnel hostname), *Stay awake while Claude works*, *Start with Windows* |
 | **Projects** | Monitored folders: add or remove, reinstall hooks, see when the last hook arrived |
 | **Devices** | **Pair device**, paired phones, their project access and input permission, **Revoke** |
-| **Activity** | Audit log: pairings, connections, refusals, project changes (never prompt content) |
+| **Activity** | Audit log: pairings, connections, refusals, project changes (never prompt content). **Clear activity** empties it after a confirmation; one entry records that it was cleared |
 
 Command-line options for `AgentMon.exe`:
 
@@ -372,19 +372,19 @@ a JDK first, for example `winget install EclipseAdoptium.Temurin.21.JDK`.
 
 ```powershell
 $env:JPACKAGE_JDK = "C:\Program Files\Java\jdk-24"   # your JDK with jpackage
-.\scripts\package-release.ps1 -Version 1.0.0
+.\scripts\package-release.ps1 -Version 1.0.1
 ```
 
 This writes to `dist\`:
 
-- `AgentMon-1.0.0-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
-- `AgentMon-1.0.0-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
+- `AgentMon-1.0.1-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
+- `AgentMon-1.0.1-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
   key and keep it out of git; `*.jks` and `*.keystore` are ignored.
 
 Then upload both files to a new GitHub release, either through **Releases → Draft a new release** on GitHub, or:
 
 ```powershell
-gh release create v1.0.0 dist\AgentMon-1.0.0-windows-x64.zip dist\AgentMon-1.0.0-android.apk --title "AgentMon 1.0.0" --notes "First release"
+gh release create v1.0.1 dist\AgentMon-1.0.1-windows-x64.zip dist\AgentMon-1.0.1-android.apk --title "AgentMon 1.0.1" --notes "First release"
 ```
 
 ---

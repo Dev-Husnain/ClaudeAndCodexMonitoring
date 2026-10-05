@@ -162,7 +162,11 @@ fun DesktopApp(controller: DesktopController) {
                 onRevoke = controller::revoke,
                 onPair = { controller.startPairing() },
             )
-            Tab.ACTIVITY -> ActivityScreen(entries = audit, deviceNames = devices.associate { it.deviceId to it.name })
+            Tab.ACTIVITY -> ActivityScreen(
+                entries = audit,
+                deviceNames = devices.associate { it.deviceId to it.name },
+                onClear = controller.audit::clear,
+            )
         }
     }
 
