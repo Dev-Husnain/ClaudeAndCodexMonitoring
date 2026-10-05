@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,33 +48,41 @@ fun ActivityScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Activity", style = MaterialTheme.typography.headlineMedium.copy(brush = colors.brandGradient))
-                Text(
-                    "Pairing, sign-ins and access changes. Session content is never recorded here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                    Text("Activity", style = MaterialTheme.typography.headlineMedium.copy(brush = colors.brandGradient))
+                    Text(
+                        "Pairing, sign-ins and access changes. Session content is never recorded here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                }
+                if (entries.isNotEmpty() && !confirmClear) {
+                    OutlineButton("Clear activity", onClick = { confirmClear = true }, color = colors.textSecondary)
+                }
+            }
+        }
+        // Two steps, like Revoke: the whole log goes, not only the filtered entries. On its own line so the
+        // buttons stay visible in a narrow window.
+        if (confirmClear) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Clear the whole activity log?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.error,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    OutlineButton("Clear", onClick = { onClear(); confirmClear = false }, color = colors.error)
+                    OutlineButton("Cancel", onClick = { confirmClear = false }, color = colors.textSecondary)
+                }
             }
         }
         item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                 ToggleChip("All", filter == null, { filter = null })
                 AuditCategory.entries.forEach { category ->
                     ToggleChip(category.label(), filter == category, { filter = category })
-                }
-                Spacer(Modifier.weight(1f))
-                // Two steps, like Revoke: the whole log goes, not only the filtered entries.
-                if (confirmClear) {
-                    Text("Clear the whole activity log?", style = MaterialTheme.typography.bodyMedium, color = colors.error)
-                    OutlineButton("Clear", onClick = { onClear(); confirmClear = false }, color = colors.error)
-                    OutlineButton("Cancel", onClick = { confirmClear = false }, color = colors.textSecondary)
-                } else if (entries.isNotEmpty()) {
-                    OutlineButton("Clear activity", onClick = { confirmClear = true }, color = colors.textSecondary)
                 }
             }
         }
