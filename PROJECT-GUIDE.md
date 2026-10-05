@@ -206,6 +206,9 @@ DataStore. It is covered by the manual gate above.
 - [x] No raw ids on the phone: an unnamed project or session reads "Claude Code session" (was a hash / short id)
 - [x] Tests: namer (3), topic (2), transcript title (1); all suites and lint pass
 - [x] Real test: the phone shows "AGENTMON HOOKTEST" after an agent restart
+- [x] `agentmon claude` in a folder that is not monitored adds it (hooks + `.gitignore` line, audited), so a terminal in
+  any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
+  chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
 ### Feature: Resume any saved conversation + remove from phone (M6, spec phase 6)
 - [x] Checked the docs first (reported to the owner): `claude -p --resume <id>` uses the normal subscription login and

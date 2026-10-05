@@ -91,7 +91,9 @@ fun main(args: Array<String>) {
     // Keep every monitored project's hooks current (new events or timeouts after an update).
     projects.projects.value.forEach { runCatching { installer.install(Path.of(it.path)) } }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val wrappers = WrapperHub(registry, scope, projectFor = { projects.projectFor(it)?.projectId })
+    // Created further down; a wrapper only connects once the server runs.
+    lateinit var controller: DesktopController
+    val wrappers = WrapperHub(registry, scope, projectFor = { cwd -> controller.monitorForWrapper(cwd) })
     control.wrapper = wrappers
     val headless = HeadlessRunner(registry, scope)
     control.headless = headless
@@ -109,7 +111,7 @@ fun main(args: Array<String>) {
     )
     val computer = ComputerOptions(DesktopSettings(dataDir.resolve("settings.properties")), KeepAwake(), AutoStart(), scope)
     computer.start(registry.state, control.awayMode)
-    val controller = DesktopController(
+    controller = DesktopController(
         registry, hub, devices, audit, pairing, identity, publicUrl, demoMode, projects, tracker, installer, control, scope, computer,
     )
 

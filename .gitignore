@@ -24,3 +24,5 @@ captures/
 .kotlin/
 # AgentMon local runtime data (keys, db, secrets)
 /.agentmon/
+# AgentMon hook secret (Claude Code local settings)
+.claude/settings.local.json

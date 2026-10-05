@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.io.path.absolute
+import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 
 data class MonitoredProject(
@@ -67,6 +68,18 @@ class ProjectStore(
         fun normalize(path: String): String {
             val slashes = path.replace('\\', '/').trimEnd('/')
             return if (windows) slashes.lowercase() else slashes
+        }
+
+        /**
+         * Whether a folder may be monitored without the owner picking it (`agentmon claude` started there): not a
+         * drive root, not the home folder or one above it, and it exists.
+         */
+        fun canAutoMonitor(dir: Path, home: Path = Path.of(System.getProperty("user.home"))): Boolean {
+            val target = dir.toAbsolutePath().normalize()
+            val userHome = home.toAbsolutePath().normalize()
+            val homeKey = normalize(userHome.toString())
+            val key = normalize(target.toString())
+            return target.parent != null && target.isDirectory() && key != homeKey && !homeKey.startsWith("$key/")
         }
 
         /** Stable id from the path, so re-adding a project keeps its id. */

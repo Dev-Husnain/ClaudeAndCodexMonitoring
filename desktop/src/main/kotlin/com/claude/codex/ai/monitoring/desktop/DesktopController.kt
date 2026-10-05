@@ -75,6 +75,26 @@ class DesktopController(
         }
     }
 
+    /**
+     * `agentmon claude` started in a folder that is not monitored yet. Starting it there is the request to see that
+     * session on the phone, so the folder is added as "Add project" would (hooks included). Home folders and drive
+     * roots are never added. Phones limited to chosen projects still do not see it until it is granted.
+     * Returns the project id, or null when the folder stays unmonitored.
+     */
+    fun monitorForWrapper(cwd: String): String? {
+        projects.projectFor(cwd)?.let { return it.projectId }
+        val dir = runCatching { Path.of(cwd).toAbsolutePath().normalize() }.getOrNull() ?: return null
+        if (!ProjectStore.canAutoMonitor(dir)) return null
+        return runCatching {
+            installer.install(dir)
+            val project = projects.add(dir)
+            registry.upsertProject(ProjectDto(project.projectId, project.name))
+            scope.launch { hub.reconnectAll() }
+            audit.record(AuditCategory.ACCESS, "Monitoring \"${project.name}\" (started with agentmon claude)")
+            project.projectId
+        }.onFailure { _projectError.value = "Could not monitor ${dir.fileName}: ${it.message}" }.getOrNull()
+    }
+
     fun reinstallHooks(project: MonitoredProject) {
         scope.launch {
             runCatching { installer.install(Path.of(project.path)) }

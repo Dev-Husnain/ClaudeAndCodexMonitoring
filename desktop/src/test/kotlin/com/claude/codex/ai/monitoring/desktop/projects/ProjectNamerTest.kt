@@ -6,6 +6,8 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ProjectNamerTest {
 
@@ -49,5 +51,16 @@ class ProjectNamerTest {
         // A second add reloads the list, which names projects afresh.
         store.add(folder("other"))
         assertEquals("Hook Lab", store.projects.value.first { it.projectId == store.projectFor(dir.toString())?.projectId }.name)
+    }
+
+    @Test
+    fun `a wrapper may add a project folder, never home, a folder above it, or a drive root`() {
+        val home = folder("home")
+        val project = home.resolve("work").resolve("shop").createDirectories()
+        assertTrue(ProjectStore.canAutoMonitor(project, home))
+        assertFalse(ProjectStore.canAutoMonitor(home, home))
+        assertFalse(ProjectStore.canAutoMonitor(home.parent, home))
+        assertFalse(ProjectStore.canAutoMonitor(home.root, home))
+        assertFalse(ProjectStore.canAutoMonitor(home.resolve("missing"), home))
     }
 }
