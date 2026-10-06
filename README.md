@@ -482,12 +482,16 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 ./gradlew :app:assembleDebug        # Android APK
 ./gradlew :app:installDebug         # install on a connected phone
 ./gradlew :desktop:run              # desktop agent (add --args="--demo" for fake sessions)
-./gradlew :cli:installDist          # wrapper -> cli/build/install/agentmon/bin/agentmon.bat
+./gradlew :cli:installDist          # wrapper -> cli/build/install/agentmon/bin/agentmon.bat (for builds)
+./gradlew :cli:installWrapper       # wrapper for everyday use -> %LOCALAPPDATA%\AgentMon\cli\bin (put this on PATH)
 ./gradlew :desktop:installAgent     # agent without Gradle -> %LOCALAPPDATA%\AgentMon\agent (quit it first)
 
 ./gradlew :app:testDebugUnitTest :shared:test :desktop:test :cli:test   # all tests
 ./gradlew :app:lintDebug            # must report "No issues found"
 ```
+
+Put `%LOCALAPPDATA%\AgentMon\cli\bin` on PATH, not the build folder: a build replaces the jars under a running
+`agentmon claude`, which can then stop typing what the phone sends. Quit running wrappers before reinstalling.
 
 The project uses Kotlin 2.2.10. Library versions are pinned to releases built for Kotlin 2.2 or older; check a
 library's Kotlin requirement before updating it.

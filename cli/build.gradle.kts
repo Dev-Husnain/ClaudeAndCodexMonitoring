@@ -34,3 +34,17 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
 }
+
+/**
+ * Installs the wrapper to %LOCALAPPDATA%\AgentMon\cli (or ~/.agentmon/cli) for everyday use. Put its bin folder on
+ * PATH, not build/install: a build replaces the jars there under a running wrapper, which then fails the first time
+ * it loads a class it had not needed yet (typing from the phone is the usual one). Quit running wrappers first.
+ */
+val installWrapper by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Installs the agentmon wrapper outside the build folder, for PATH."
+    val target = System.getenv("LOCALAPPDATA")?.let { file("$it/AgentMon/cli") }
+        ?: file("${System.getProperty("user.home")}/.agentmon/cli")
+    from(tasks.named("installDist"))
+    into(target)
+}

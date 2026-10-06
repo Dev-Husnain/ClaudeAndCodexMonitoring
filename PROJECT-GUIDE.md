@@ -210,6 +210,13 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Wrapper installed outside the build folder
+- [x] Seen in real use: a phone message showed "Delivered" but never reached a wrapped Claude. The wrapper ran from
+  `cli/build/install` (on PATH), and a release build replaced its jars while it ran (wrapper started 21:22, cli.jar
+  rewritten 22:14), so typing from the phone failed inside the wrapper. New `:cli:installWrapper` copies the wrapper to
+  `%LOCALAPPDATA%\AgentMon\cli`; this PC's PATH now points there. Release users are not affected (separate folder)
+- [ ] Possible later: the wrapper acknowledges typed input, so the phone shows "Delivered" only after it really typed
+
 ### Away-mode replies continue Claude again (v1.0.6)
 - [x] A reply typed on the phone after Claude finished (held `Stop`) showed "Delivered to Claude", but Claude stayed
   stopped. The hook answered with `hookSpecificOutput.additionalContext` only, which current Claude Code treats as an

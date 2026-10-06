@@ -24,7 +24,8 @@ Use the Android Studio JBR: `export JAVA_HOME="/c/Program Files/Android/Android 
 ./gradlew :app:assembleDebug                 # Android APK
 ./gradlew :app:installDebug                  # install on device/emulator
 ./gradlew :desktop:run                       # desktop agent (real sessions from Projects; --args="--demo" adds fake ones)
-./gradlew :cli:installDist                   # agentmon wrapper -> cli/build/install/agentmon/bin
+./gradlew :cli:installDist                   # agentmon wrapper -> cli/build/install/agentmon/bin (builds only)
+./gradlew :cli:installWrapper               # wrapper for PATH -> %LOCALAPPDATA%\AgentMon\cli\bin (quit wrappers first)
 ./gradlew :desktop:installAgent              # agent without Gradle -> %LOCALAPPDATA%\AgentMon\agent (quit it first)
 .\scripts\package-release.ps1                # (PowerShell) release zip + APK -> dist\, needs JPACKAGE_JDK with jpackage
 ./gradlew :app:testDebugUnitTest :shared:test :desktop:test :cli:test   # all unit/integration tests
@@ -41,5 +42,8 @@ adb reverse tcp:8787 tcp:8787                # lets the phone reach the laptop a
 - The Bash tool can fail on apostrophes inside heredocs; write source files with the Write tool.
 - `:desktop:run` runs from `build/classes`: rebuilding the desktop while it runs swaps classes under it
   (ClassNotFoundException, HTTP 500 on /hook). Restart the agent after every desktop build.
+- Never put `cli/build/install/agentmon/bin` on PATH: every build (incl. `package-release.ps1`) replaces those jars
+  under running wrappers, which then fail when they first load a class, typically when the phone types (the phone
+  still shows "Delivered"). PATH points to `:cli:installWrapper`'s copy; restart wrappers after reinstalling it.
 - Stopping `./gradlew :desktop:run` can leave the agent's JVM running on port 8787, and a new run then fails or
   the phone keeps talking to old code. Check with `netstat -ano | grep ":8787 .*LISTEN"` and kill that PID.
