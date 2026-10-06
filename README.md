@@ -10,7 +10,7 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 - **`agentmon` wrapper.** Start Claude with `agentmon claude` instead of `claude`, and the phone can see that
   terminal and type into it.
 
-> Status: version 1.0.3, Windows + Android. Claude Code is supported; Codex is planned.
+> Status: version 1.0.4, Windows + Android. Claude Code is supported; Codex is planned.
 
 ---
 
@@ -40,7 +40,7 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 
 ## Quick start
 
-1. Download `AgentMon-1.0.3-windows-x64.zip` and `AgentMon-1.0.3-android.apk` from [Releases](../../releases).
+1. Download `AgentMon-1.0.4-windows-x64.zip` and `AgentMon-1.0.4-android.apk` from [Releases](../../releases).
 2. **Computer:** unzip to a permanent folder and start `AgentMon\AgentMon.exe`, then add the `cli` folder to PATH.
    ([Step 1](#step-1-install-on-the-computer))
 3. **Phone:** install the APK. ([Step 2](#step-2-install-the-phone-app))
@@ -106,13 +106,13 @@ Download from the [Releases](../../releases) page:
 
 | File | What it is |
 |---|---|
-| `AgentMon-1.0.3-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
-| `AgentMon-1.0.3-android.apk` | Phone app |
+| `AgentMon-1.0.4-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
+| `AgentMon-1.0.4-android.apk` | Phone app |
 
-1. **Unzip** `AgentMon-1.0.3-windows-x64.zip` to a folder you will keep, for example `C:\Users\<you>\AgentMon`.
+1. **Unzip** `AgentMon-1.0.4-windows-x64.zip` to a folder you will keep, for example `C:\Users\<you>\AgentMon`.
    You get:
    ```
-   AgentMon-1.0.3-windows-x64\
+   AgentMon-1.0.4-windows-x64\
      AgentMon\AgentMon.exe     the desktop agent
      cli\agentmon.exe          the wrapper you run instead of "claude"
      README.txt
@@ -127,14 +127,14 @@ Download from the [Releases](../../releases) page:
    - Press **Win**, type **environment**, and open **Edit environment variables for your account**.
    - Under **User variables**, select **Path**, click **Edit…**, then **New**.
    - Paste the full path of the `cli` folder, for example
-     `C:\Users\<you>\AgentMon\AgentMon-1.0.3-windows-x64\cli`.
+     `C:\Users\<you>\AgentMon\AgentMon-1.0.4-windows-x64\cli`.
    - Click **OK** on every window.
    - **Close and reopen** your terminals. In Android Studio, close and reopen the IDE.
-   - Check it in a new terminal: `agentmon --version` should print `agentmon 1.0.3`.
+   - Check it in a new terminal: `agentmon --version` should print `agentmon 1.0.4`.
 
    Or do the same in PowerShell:
    ```powershell
-   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.3-windows-x64\cli"
+   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.4-windows-x64\cli"
    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User").TrimEnd(";") + ";" + $dir, "User")
    ```
 4. **Optional:** on the agent's **Overview** tab, turn on **Start with Windows**, so the phone can reach your
@@ -145,7 +145,7 @@ Download from the [Releases](../../releases) page:
 
 ## Step 2: Install the phone app
 
-1. Get `AgentMon-1.0.3-android.apk` onto the phone: open the Releases page in the phone's browser and download
+1. Get `AgentMon-1.0.4-android.apk` onto the phone: open the Releases page in the phone's browser and download
    it, or copy it over by cable or cloud drive.
 2. Tap the file. When Android asks, allow **Install unknown apps** for your browser or file manager, then tap
    **Install**. Play Protect may warn that the app is unknown; choose **Install anyway**.
@@ -246,9 +246,12 @@ come from the computer itself.
 Pairing happens once per phone. Only phones you approve on the computer can connect.
 
 1. On the computer, click **Pair device** (bottom left in AgentMon, or **Devices → Pair device**).
-2. The dialog picks the route that works right now:
-   - **Anywhere · agent.example.com** when your tunnel answers. It reads *not set up* while no address is saved.
-   - **USB · adb reverse** otherwise. Make sure `adb reverse tcp:8787 tcp:8787` was run.
+2. Check the route at the top of the dialog:
+   - **Anywhere · agent.example.com** is used whenever a Phone access address is saved. It reads *not set up*
+     while there is none. If this computer can't reach the address at that moment, a red note says so. Pairing
+     still works as long as `https://<your address>/health` opens in the phone's browser.
+   - **USB · adb reverse** is for phones on a cable. Make sure `adb reverse tcp:8787 tcp:8787` was run. A phone
+     without adb can never pair with a USB code.
 3. On the phone, open AgentMon, tap **Pair with your computer** and scan the QR code. If the camera can't read it,
    copy the code shown under the QR (it starts with `AGENTMON1:`) to the phone and paste it.
 4. The phone shows the computer's fingerprint, and the computer shows the phone's. Check they match.
@@ -457,6 +460,9 @@ More in [docs/threat-model.md](docs/threat-model.md).
 | PowerShell says "Unexpected token 'claude'" | You ran a quoted path without `&`. Use `& "C:\path\agentmon.exe" claude`, or put it on PATH. |
 | Session doesn't appear on the phone | Check the agent is running (tray icon) and the phone shows **Connected**. With plain `claude`, it appears after the first prompt. A phone limited to some projects needs the project granted in **Devices**. |
 | Pairing only offers USB / "Anywhere · not set up" | Enter your tunnel hostname under **Overview → This computer → Phone access address** and click **Save**. |
+| Phone says "Pairing did not complete: could not reach your computer" | The QR code was for USB. Click **Pair device** again and check it says **Anywhere**. Open `https://<your address>/health` in the phone's browser; if that fails, the tunnel or the phone's network (VPN, DNS) is the problem |
+| Pairing dialog warns that this computer can't reach the address | Usually this computer's DNS. Pairing still works if the phone can open `/health`. To clear it, set the computer's DNS to `1.1.1.1` (Settings → Network → your connection → DNS server assignment → Manual) |
+| Phone is connected but has no keyboard or terminal keys | It was approved **read-only**. On the computer, **Devices → Can send input** |
 | Phone shows **Offline** | Open `https://agent.<your-domain>/health` on the phone. If that fails, check the cloudflared service. Over USB, run `adb reverse tcp:8787 tcp:8787` again after reconnecting. |
 | "Start with Windows" can't be turned on | Run the agent from `AgentMon.exe` in a permanent folder, not from a build or the Downloads folder. |
 | Alerts don't arrive with the app closed | Turn on **Alerts when the app is closed** and remove battery restrictions for AgentMon. Some phones (Xiaomi, Oppo…) also need "Autostart" allowed. |
@@ -494,19 +500,19 @@ a JDK first, for example `winget install EclipseAdoptium.Temurin.21.JDK`.
 
 ```powershell
 $env:JPACKAGE_JDK = "C:\Program Files\Java\jdk-24"   # your JDK with jpackage
-.\scripts\package-release.ps1 -Version 1.0.3
+.\scripts\package-release.ps1 -Version 1.0.4
 ```
 
 This writes to `dist\`:
 
-- `AgentMon-1.0.3-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
-- `AgentMon-1.0.3-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
+- `AgentMon-1.0.4-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
+- `AgentMon-1.0.4-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
   key and keep it out of git; `*.jks` and `*.keystore` are ignored.
 
 Then upload both files to a new GitHub release, either through **Releases → Draft a new release** on GitHub, or:
 
 ```powershell
-gh release create v1.0.3 dist\AgentMon-1.0.3-windows-x64.zip dist\AgentMon-1.0.3-android.apk --title "AgentMon 1.0.3" --notes "First release"
+gh release create v1.0.4 dist\AgentMon-1.0.4-windows-x64.zip dist\AgentMon-1.0.4-android.apk --title "AgentMon 1.0.4" --notes "First release"
 ```
 
 ---

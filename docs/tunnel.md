@@ -217,8 +217,9 @@ override the saved address. The field then shows where the address comes from an
 
 ## Pair the phone for "Anywhere"
 
-1. In AgentMon, click **Pair device**. The dialog checks your address. If `https://<your address>/health` answers,
-   it selects **Anywhere · your-address**.
+1. In AgentMon, click **Pair device**. With an address saved, the dialog uses **Anywhere · your-address**. It also
+   checks the address from this computer and shows a red note if that fails. Pairing still works if
+   `https://<your address>/health` opens in the phone's browser.
 2. Scan the QR code with the app, compare the fingerprints, and approve on the computer.
 3. Test it: turn off Wi-Fi on the phone. The app should still show **Connected**.
 
@@ -256,6 +257,7 @@ If you move to a new hostname or another tunnel service:
 | `/health` gives **404** | The hostname in `config.yml` doesn't match the one you open |
 | `/health` can't be **found** (DNS) | `cloudflared tunnel route dns …` wasn't run, the domain isn't **Active** on Cloudflare yet, or your router still caches the old answer (try mobile data) |
 | Works in the foreground, not after a restart | The Windows service: redo step 7.2–7.4 and check `C:\Windows\System32\config\systemprofile\.cloudflared\cloudflared.log` |
-| Pairing dialog only offers **USB** | No address is saved, or `/health` didn't answer at that moment. Save the address and open **Pair device** again |
+| Pairing dialog only offers **USB** | No address is saved. Save it under **Phone access address** and open **Pair device** again |
+| Pairing dialog warns that this computer can't reach the address | Usually this computer's DNS, not the tunnel. Check `/health` on the phone; to clear the warning, set the computer's DNS to `1.1.1.1` |
 | Phone says **Offline** away from home | The phone was paired over USB: pair again with **Anywhere**. Or the tunnel is down: check `/health` |
 | Sessions stopped updating after you set up a proxy | Claude's hooks must reach `127.0.0.1` directly. If you use `HTTP_PROXY`/`HTTPS_PROXY`, set `NO_PROXY=127.0.0.1,localhost` |

@@ -210,6 +210,15 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Fixes found in real use (v1.0.4)
+- [x] Pairing used a USB code whenever this computer could not reach its own tunnel. Only the computer's DNS was failing,
+  and a Samsung without adb could not pair ("could not reach your computer"). The tunnel route is now used whenever an
+  address is set; the check from this computer only warns. Real test: the A26 paired through the tunnel while this
+  computer's DNS still failed
+- [x] A read-only phone saw a terminal without keys or message box and no reason; the Terminal tab now shows the
+  read-only note too
+- [x] README and docs/tunnel.md: pairing behaviour and three new troubleshooting rows
+
 ### Feature: README restructure + v1.0.2
 - [x] README: quick start, then numbered steps (install computer, install phone, choose USB or own tunnel incl.
   adb/USB-debugging setup, pair, start Claude), running/updating/uninstalling the agent, everyday use
