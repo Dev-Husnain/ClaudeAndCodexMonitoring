@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 import java.net.InetAddress
 import java.nio.file.Path
 
-private const val VERSION = "1.0.4"
+private const val VERSION = "1.0.5"
 
 /**
  * Arguments: `--background` starts in the tray (used when starting with Windows); `--demo` adds fake sessions for trying

@@ -196,6 +196,8 @@
     <string name="detail_tab_terminal">Terminal</string>
     <string name="detail_terminal_hint">Messages are typed straight into Claude\'s terminal.</string>
     <string name="terminal_connecting">Connecting to the terminal…</string>
+    <string name="terminal_copy">Copy</string>
+    <string name="terminal_copied">Copied</string>
     <string name="terminal_jump_latest">Jump to latest</string>
     <string name="key_enter">Enter</string>
     <string name="key_escape">Esc</string>

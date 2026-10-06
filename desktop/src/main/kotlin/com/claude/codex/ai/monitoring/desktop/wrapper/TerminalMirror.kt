@@ -27,8 +27,12 @@ import java.util.concurrent.atomic.AtomicLong
  * A headless terminal emulator (JediTerm) fed with a wrapper's output, so the phone can be shown what
  * the terminal shows. Claude Code redraws its screen with cursor movement; only an emulator turns
  * that into lines. Everything stays in memory and is never logged.
+ *
+ * Scrollback is kept here, not only in the emulator: Windows' pseudo-terminal (ConPTY) repaints the visible
+ * screen instead of scrolling it, so lines leaving the top never reach the emulator's own history. Each change
+ * is compared with the previous screen; when its content moved up, the lines that left the top are saved.
  */
-class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES) {
+class TerminalMirror(columns: Int, rows: Int, private val historyLines: Int = HISTORY_LINES) {
 
     private val styleState = StyleState()
     private val buffer = TerminalTextBuffer(columns.coerceIn(MIN_SIZE, MAX_COLUMNS), rows.coerceIn(MIN_SIZE, MAX_ROWS), styleState, historyLines)
@@ -36,6 +40,12 @@ class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES)
     private val terminal = JediTerminal(display, buffer, styleState)
     private val connector = QueueConnector()
     private val version = AtomicLong()
+
+    /** Lines that scrolled off the top, oldest first (guarded by itself). */
+    private val history = ArrayDeque<TerminalLineDto>()
+    private var lastScreen: List<TerminalLineDto> = emptyList()
+    private var lastEmulatorHistory = 0
+    private var trackedVersion = -1L
 
     /** Increases whenever the screen changed; lets the sender skip unchanged snapshots. */
     val changeCount: Long get() = version.get()
@@ -53,9 +63,17 @@ class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES)
         }
     }, "agentmon-terminal-mirror").apply { isDaemon = true }
 
+    private val tracker = Thread({
+        while (!connector.closed) {
+            runCatching { track() }
+            Thread.sleep(TRACK_INTERVAL_MS)
+        }
+    }, "agentmon-terminal-history").apply { isDaemon = true }
+
     init {
         buffer.addModelListener { version.incrementAndGet() }
         thread.start()
+        tracker.start()
     }
 
     fun feed(text: String) {
@@ -64,6 +82,8 @@ class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES)
 
     fun resize(columns: Int, rows: Int) {
         terminal.resize(TermSize(columns.coerceIn(MIN_SIZE, MAX_COLUMNS), rows.coerceIn(MIN_SIZE, MAX_ROWS)), RequestOrigin.Remote)
+        // Lines reflow on a resize; comparing across it would look like scrolling.
+        synchronized(history) { lastScreen = emptyList() }
         version.incrementAndGet()
     }
 
@@ -71,24 +91,55 @@ class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES)
 
     /** The newest [maxLines] lines (scrollback, then screen), without the empty rows below the content. */
     fun snapshot(maxLines: Int = ProtocolConstants.TERMINAL_MAX_LINES): List<TerminalLineDto> {
+        track()
+        val screen = readScreen()
+        var last = screen.lastIndex
+        while (last > cursorRow && screen[last].spans.isEmpty()) last--
+        val visible = screen.subList(0, last + 1)
+        val saved = synchronized(history) { history.toList() }
+        return (saved + visible).takeLast(maxLines)
+    }
+
+    /** Saves what scrolled off since the last call: the emulator's own new history, or lines a repaint pushed out. */
+    private fun track() {
+        val current = version.get()
         buffer.lock()
+        val screen: List<TerminalLineDto>
+        val emulatorHistory: List<TerminalLineDto>
         try {
-            val history = buffer.historyLinesStorage
-            val screen = buffer.screenLinesStorage
-            var lastScreenLine = terminal.cursorY - 1 // cursorY is 1-based
-            for (i in screen.size - 1 downTo 0) {
-                if (!screen.get(i).isNulOrEmpty) {
-                    lastScreenLine = maxOf(lastScreenLine, i)
-                    break
-                }
-            }
-            val lines = ArrayList<TerminalLine>(history.size + lastScreenLine + 1)
-            for (i in 0 until history.size) lines += history.get(i)
-            for (i in 0..minOf(lastScreenLine, screen.size - 1)) lines += screen.get(i)
-            return lines.takeLast(maxLines).map { it.toDto() }
+            if (current == trackedVersion) return
+            trackedVersion = current
+            screen = screenLines()
+            val stored = buffer.historyLinesStorage
+            // The emulator scrolled for real (e.g. on macOS and Linux): take its new lines as they are.
+            val added = (stored.size - lastEmulatorHistory).coerceAtLeast(0)
+            emulatorHistory = (stored.size - added until stored.size).map { stored.get(it).toDto() }
+            lastEmulatorHistory = stored.size
         } finally {
             buffer.unlock()
         }
+        synchronized(history) {
+            val scrolledOff = if (emulatorHistory.isNotEmpty()) emulatorHistory else scrolledOff(lastScreen, screen)
+            scrolledOff.forEach { history.addLast(it) }
+            while (history.size > historyLines) history.removeFirst()
+            lastScreen = screen
+        }
+    }
+
+    private val cursorRow: Int get() = terminal.cursorY - 1 // cursorY is 1-based
+
+    private fun readScreen(): List<TerminalLineDto> {
+        buffer.lock()
+        try {
+            return screenLines()
+        } finally {
+            buffer.unlock()
+        }
+    }
+
+    private fun screenLines(): List<TerminalLineDto> {
+        val screen = buffer.screenLinesStorage
+        return (0 until screen.size).map { screen.get(it).toDto() }
     }
 
     private fun TerminalLine.toDto(): TerminalLineDto {
@@ -194,7 +245,38 @@ class TerminalMirror(columns: Int, rows: Int, historyLines: Int = HISTORY_LINES)
         }
     }
 
-    private companion object {
+    companion object {
+        /**
+         * The lines that left the top between [before] and [after]: the largest shift `k` for which the top of
+         * [after] continues [before] from line `k` on, with at least [MIN_OVERLAP] non-empty matching lines (so a
+         * mostly blank screen or a full redraw is not mistaken for scrolling). Lines are compared by their text.
+         */
+        internal fun scrolledOff(before: List<TerminalLineDto>, after: List<TerminalLineDto>): List<TerminalLineDto> {
+            if (before.isEmpty() || after.isEmpty()) return emptyList()
+            val old = before.map { it.plainText() }
+            val new = after.map { it.plainText() }
+            if (overlap(old, new, 0) >= MIN_OVERLAP) return emptyList() // Same top: nothing scrolled.
+            for (shift in 1 until old.size) {
+                if (overlap(old, new, shift) >= MIN_OVERLAP) return before.subList(0, shift)
+            }
+            return emptyList()
+        }
+
+        /** Non-empty lines of `new` matching `old` from [shift] on, counted until the first difference. */
+        private fun overlap(old: List<String>, new: List<String>, shift: Int): Int {
+            var matched = 0
+            var i = 0
+            while (shift + i < old.size && i < new.size && old[shift + i] == new[i]) {
+                if (new[i].isNotBlank()) matched++
+                i++
+            }
+            return matched
+        }
+
+        private fun TerminalLineDto.plainText(): String = spans.joinToString("") { it.text }.trimEnd()
+
+        private const val MIN_OVERLAP = 3
+        private const val TRACK_INTERVAL_MS = 60L
         const val HISTORY_LINES = 1_000
         const val MIN_SIZE = 2
         const val MAX_COLUMNS = 500

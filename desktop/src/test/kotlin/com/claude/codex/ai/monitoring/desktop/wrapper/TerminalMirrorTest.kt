@@ -59,4 +59,40 @@ class TerminalMirrorTest {
         assertEquals(0x1000000 or 0x7C5CFF, span.fg)
         assertTrue(mirror.bracketedPaste)
     }
+
+    /** A full-screen repaint the way Windows' ConPTY sends it: home, then every row rewritten in place. */
+    private fun repaint(rows: List<String>) =
+        "\u001B[H" + rows.mapIndexed { i, row -> "\u001B[${i + 1};1H$row\u001B[K" }.joinToString("")
+
+    @Test
+    fun `lines a repaint pushes off the top are kept as scrollback`() {
+        val first = (1..8).map { "line $it" } + listOf("", "> prompt")
+        mirror.feed(repaint(first))
+        awaitLines(first)
+        // Claude printed two more lines: the content moved up by two, the prompt stayed at the bottom.
+        val second = (3..10).map { "line $it" } + listOf("", "> prompt")
+        mirror.feed(repaint(second))
+        awaitLines((1..10).map { "line $it" } + listOf("", "> prompt"))
+    }
+
+    @Test
+    fun `a redraw that only changes the bottom is not taken for scrolling`() {
+        val before = (1..6).map { "msg $it" } + listOf("", "", "", "working.")
+        mirror.feed(repaint(before))
+        awaitLines(before)
+        val after = (1..6).map { "msg $it" } + listOf("", "", "", "working...")
+        mirror.feed(repaint(after))
+        awaitLines(after)
+    }
+
+    @Test
+    fun `scrolled-off lines are found from the shift, and a mostly blank screen never counts`() {
+        fun lines(vararg texts: String) = texts.map { TerminalLineDto(if (it.isEmpty()) emptyList() else listOf(com.claude.codex.ai.monitoring.protocol.TerminalSpanDto(it))) }
+        val before = lines("a", "b", "c", "d", "e", "", "> ")
+        val after = lines("c", "d", "e", "f", "g", "", "> ")
+        assertEquals(listOf("a", "b"), TerminalMirror.scrolledOff(before, after).texts())
+        assertEquals(emptyList(), TerminalMirror.scrolledOff(before, before).texts())
+        assertEquals(emptyList(), TerminalMirror.scrolledOff(lines("x", "", "", ""), lines("", "", "", "y")).texts())
+        assertEquals(emptyList(), TerminalMirror.scrolledOff(before, lines("new", "screen", "entirely", "", "")).texts())
+    }
 }

@@ -28,5 +28,5 @@ object ProtocolConstants {
     const val MAX_TEXT_CHARS = 2_000
 
     /** Newest terminal lines (scrollback + screen) sent to an attached phone. */
-    const val TERMINAL_MAX_LINES = 200
+    const val TERMINAL_MAX_LINES = 500
 }

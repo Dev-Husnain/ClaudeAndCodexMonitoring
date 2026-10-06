@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -47,11 +50,14 @@ import com.claude.codex.ai.monitoring.domain.models.TerminalLineModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalSpanModel
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.toAnnotatedString
+import android.content.ClipData
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * The mirrored terminal: follows new output while scrolled to the bottom, offers "Jump to latest"
- * otherwise, scrolls sideways for wide lines, and zooms with two fingers.
+ * otherwise, scrolls sideways for wide lines, and zooms with two fingers. Text can be selected with a long
+ * press, and "Copy" copies everything the terminal holds.
  */
 @Composable
 fun TerminalView(
@@ -71,6 +77,14 @@ fun TerminalView(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var follow by remember { mutableStateOf(true) }
+    val clipboard = LocalClipboard.current
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_LABEL_MS)
+            copied = false
+        }
+    }
 
     LaunchedEffect(listState) {
         // Dragging up stops following; reaching the bottom again resumes it.
@@ -98,17 +112,31 @@ fun TerminalView(
             return@BoxWithConstraints
         }
         val contentWidth = with(LocalDensity.current) { (charWidthPx * screen.columns).toDp() + Dimens.SpaceMd * 2 }
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(Dimens.SpaceMd),
-            modifier = Modifier
-                .fillMaxHeight()
-                .horizontalScroll(rememberScrollState())
-                .width(maxOf(maxWidth, contentWidth)),
-        ) {
-            itemsIndexed(texts) { _, text ->
-                Text(text = text, style = style, softWrap = false, maxLines = 1)
+        SelectionContainer {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(Dimens.SpaceMd),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .horizontalScroll(rememberScrollState())
+                    .width(maxOf(maxWidth, contentWidth)),
+            ) {
+                itemsIndexed(texts) { _, text ->
+                    Text(text = text, style = style, softWrap = false, maxLines = 1)
+                }
             }
+        }
+        if (texts.isNotEmpty()) {
+            val copyLabel = stringResource(if (copied) R.string.terminal_copied else R.string.terminal_copy)
+            QuickActionChip(
+                text = copyLabel,
+                onClick = {
+                    val all = texts.joinToString("\n") { it.text.trimEnd() }.trimEnd()
+                    scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Terminal", all))) }
+                    copied = true
+                },
+                modifier = Modifier.align(Alignment.TopEnd).padding(Dimens.SpaceSm),
+            )
         }
         if (!follow) {
             QuickActionChip(
@@ -138,6 +166,7 @@ private fun Modifier.pinchToZoom(onZoom: (Float) -> Unit): Modifier = pointerInp
     }
 }
 
+private const val COPIED_LABEL_MS = 1_500L
 private const val MIN_SCALE = 0.6f
 private const val MAX_SCALE = 2.5f
 

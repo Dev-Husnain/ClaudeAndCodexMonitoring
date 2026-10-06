@@ -193,7 +193,7 @@ Wrapper frames (JSON, `type` discriminator, never sent to phones):
   `quick_action` presses keys in Claude's own dialog (`ClaudeCodePromptProfile`: APPROVE = Enter,
   DENY/INTERRUPT = Esc), and APPROVE/DENY only while the session is waiting for input.
 - **Terminal mirror.** The agent feeds the output into a headless terminal emulator (JediTerm) and sends
-  attached phones `terminal.screen`: the newest 200 lines (scrollback plus screen), at most every 250 ms and
+  attached phones `terminal.screen`: the newest 500 lines (scrollback plus screen; the agent keeps its own scrollback because ConPTY repaints instead of scrolling), at most every 250 ms and
   only when something changed. Raw `terminal.chunk` output is not usable because Claude Code redraws with
   cursor movement. Colours are `null` (default), `0..255` (xterm palette), or `1<<24 | 0xRRGGBB`.
   Read-only devices may watch; `terminal.key` and input need "Allow sending input". Terminal content is kept

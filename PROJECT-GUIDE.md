@@ -210,6 +210,16 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Terminal scrollback and copy (v1.0.5)
+- [x] The phone's terminal only scrolled about one screen. Windows' ConPTY repaints the visible screen instead of
+  scrolling, so lines leaving the top never reached JediTerm's history (measured: an 80-line answer kept only the last 30
+  rows). `TerminalMirror` now keeps its own scrollback (1,000 lines): every change is compared with the previous screen,
+  and when the content moved up by `k` lines (at least 3 matching non-empty lines), the `k` lines that left the top are
+  saved. Real emulator scrolling (macOS/Linux) still uses JediTerm's own history. Resizes reset the comparison
+- [x] `terminal.screen` carries the newest 500 lines (was 200)
+- [x] Phone: long-press selects terminal text (SelectionContainer); a **Copy** chip copies the whole terminal
+- [x] Tests: ConPTY-style repaint keeps scrolled-off lines, a bottom-only redraw is not scrolling, shift detection (3)
+
 ### Fixes found in real use (v1.0.4)
 - [x] Pairing used a USB code whenever this computer could not reach its own tunnel. Only the computer's DNS was failing,
   and a Samsung without adb could not pair ("could not reach your computer"). The tunnel route is now used whenever an
