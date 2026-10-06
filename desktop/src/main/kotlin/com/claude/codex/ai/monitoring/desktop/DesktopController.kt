@@ -130,15 +130,14 @@ class DesktopController(
     }
 
     /**
-     * Opens the pair dialog on the route that can actually work: the tunnel if it answers right now,
-     * otherwise USB. A QR pointing at an unreachable address could only ever fail on the phone.
+     * Opens the pair dialog on the tunnel whenever an address is set, and on USB otherwise. The tunnel is checked
+     * from this computer only to warn: what matters is whether the phone reaches it, and this computer's own DNS
+     * can fail while the phone's works (a QR silently switched to USB then fails on every phone without adb).
      */
     fun startPairing() {
-        scope.launch {
-            val reachable = probeTunnel()
-            _tunnelReachable.value = reachable
-            startPairing(if (reachable) PairingRoute.TUNNEL else PairingRoute.USB)
-        }
+        _tunnelReachable.value = null
+        startPairing(if (computer.publicUrl.value != null) PairingRoute.TUNNEL else PairingRoute.USB)
+        scope.launch { _tunnelReachable.value = probeTunnel() }
     }
 
     fun startPairing(route: PairingRoute) {

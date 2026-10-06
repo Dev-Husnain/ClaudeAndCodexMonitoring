@@ -80,11 +80,12 @@ fun PairDialogContent(
             tunnelHost == null ->
                 "To pair for use anywhere, set your tunnel address under Overview > This computer > Phone access address. " +
                     "This code uses USB: connect the phone and run: adb reverse tcp:8787 tcp:8787"
-            route == PairingRoute.USB && tunnelReachable == false ->
-                "$tunnelHost is not reachable yet, so this code uses USB. Connect the phone and run: adb reverse tcp:8787 tcp:8787"
             route == PairingRoute.USB -> "Phone must be connected by USB with: adb reverse tcp:8787 tcp:8787"
-            tunnelReachable == false -> "Warning: $tunnelHost is not reachable right now. Pairing will fail until the tunnel runs."
-            else -> "Works from anywhere through the Cloudflare tunnel."
+            tunnelReachable == false ->
+                "This computer could not reach $tunnelHost just now (its DNS or the tunnel). If https://$tunnelHost/health " +
+                    "opens in the phone's browser, pairing still works."
+            tunnelReachable == null -> "Works from anywhere through your tunnel. Checking $tunnelHost…"
+            else -> "Works from anywhere through your tunnel."
         }
         Text(
             routeNote,
