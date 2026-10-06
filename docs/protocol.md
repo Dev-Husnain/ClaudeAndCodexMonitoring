@@ -120,8 +120,8 @@ with an `ack` carrying the request's envelope id.
   `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}`; DENY answers
   `behavior: deny` with a message, and INTERRUPT the same with `interrupt: true`.
 - A `Stop` hook is held the same way with `awaiting {kind: REPLY, detail: Claude's last message}`.
-  `send_input` answers `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"…"}}`, so Claude
-  continues with the text; `quick_action CONTINUE` sends "Continue."; DENY/INTERRUPT lets it stop.
+  `send_input` answers `{"decision":"block","reason":"…"}`, which keeps Claude from stopping and gives it the
+  text (`additionalContext` alone is only an end-of-turn note, and Claude may still stop); `quick_action CONTINUE` sends "Continue."; DENY/INTERRUPT lets it stop.
 - `send_input` while Claude is working returns `QUEUED`; the text is delivered at the next `Stop`, even with
   Away mode off.
 - Turning Away mode off, a timeout or `SessionEnd` releases everything held with "no decision": Claude shows

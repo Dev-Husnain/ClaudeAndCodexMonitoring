@@ -41,9 +41,10 @@ private sealed interface PermissionAnswer {
  * wrapper:
  * - In **Away mode** a `PermissionRequest` hook is held until the phone approves or denies. The reply
  *   is the documented `decision` object; releasing it (Away off, timeout) shows the normal dialog.
- * - In Away mode a `Stop` hook is held until the phone sends the next instruction, which reaches Claude
- *   as `additionalContext` and continues the conversation. A message sent while Claude is still
- *   working is queued and handed over at the next `Stop`.
+ * - In Away mode a `Stop` hook is held until the phone sends the next instruction. The reply is the documented
+ *   `{"decision": "block", "reason": …}`, which keeps Claude from stopping and gives it the instruction. (Only
+ *   `additionalContext` is a note at the end of the turn: Claude can take it and still stop.) A message sent
+ *   while Claude is still working is queued and handed over at the next `Stop`.
  * With Away mode off, every hook is answered at once, so Claude behaves exactly as without AgentMon.
  */
 class ControlCenter(
@@ -316,14 +317,10 @@ class ControlCenter(
         )
     }.toString()
 
+    /** Keeps Claude from stopping and hands it the instruction (Stop decision control: `block` + `reason`). */
     private fun continueJson(instruction: String): String = buildJsonObject {
-        put(
-            "hookSpecificOutput",
-            buildJsonObject {
-                put("hookEventName", "Stop")
-                put("additionalContext", "The user sent this from their phone (AgentMon). Continue with it:\n$instruction")
-            },
-        )
+        put("decision", "block")
+        put("reason", "The user sent this from their phone (AgentMon). Continue with it:\n$instruction")
     }.toString()
 
     private companion object {

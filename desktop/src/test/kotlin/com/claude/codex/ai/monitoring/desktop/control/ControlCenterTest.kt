@@ -32,6 +32,13 @@ class ControlCenterTest {
     private fun decision(json: String?) =
         Json.parseToJsonElement(json!!).jsonObject.getValue("hookSpecificOutput").jsonObject
 
+    /** The instruction a Stop reply gives Claude, after checking the reply keeps Claude from stopping. */
+    private fun continuation(json: String?): String {
+        val reply = Json.parseToJsonElement(json!!).jsonObject
+        assertEquals("block", reply.getValue("decision").jsonPrimitive.content)
+        return reply.getValue("reason").jsonPrimitive.content
+    }
+
     @Test
     fun `away mode off answers every hook at once with no decision`() = runBlocking {
         assertNull(control.onPermissionRequest("s1", "Bash: ls"))
@@ -68,8 +75,7 @@ class ControlCenterTest {
         val reply = async { control.onStop("s1", "All tests pass.") }
         waitUntilHeld(AwaitingKind.REPLY)
         assertEquals(DeliveryResult.DELIVERED, control.deliverText("s1", "Now update the README").result)
-        val context = decision(reply.await()).getValue("additionalContext").jsonPrimitive.content
-        assertTrue(context.endsWith("Now update the README"))
+        assertTrue(continuation(reply.await()).endsWith("Now update the README"))
         assertTrue(agent.registry.history("s1").events.any { it.title == "From your phone" })
     }
 
@@ -77,7 +83,7 @@ class ControlCenterTest {
     fun `a message sent while Claude works is queued for the next stop, even without away mode`() = runBlocking {
         assertEquals(DeliveryResult.QUEUED, control.deliverText("s1", "Also add tests").result)
         val reply = control.onStop("s1", "done")
-        assertTrue(decision(reply).getValue("additionalContext").jsonPrimitive.content.endsWith("Also add tests"))
+        assertTrue(continuation(reply).endsWith("Also add tests"))
         assertNull(control.onStop("s1", "done again"), "the queued message is delivered once")
     }
 

@@ -210,6 +210,12 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Away-mode replies continue Claude again (v1.0.6)
+- [x] A reply typed on the phone after Claude finished (held `Stop`) showed "Delivered to Claude", but Claude stayed
+  stopped. The hook answered with `hookSpecificOutput.additionalContext` only, which current Claude Code treats as an
+  end-of-turn note. It now answers with the documented Stop decision `{"decision":"block","reason":…}`, so Claude
+  continues with the instruction. The same reply serves queued messages and the Continue button. Tests updated
+
 ### Terminal scrollback and copy (v1.0.5)
 - [x] The phone's terminal only scrolled about one screen. Windows' ConPTY repaints the visible screen instead of
   scrolling, so lines leaving the top never reached JediTerm's history (measured: an 80-line answer kept only the last 30
