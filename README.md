@@ -10,7 +10,7 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 - **`agentmon` wrapper.** Start Claude with `agentmon claude` instead of `claude`, and the phone can see that
   terminal and type into it.
 
-> Status: version 1.0.7, Windows + Android. Claude Code is supported; Codex is planned.
+> Status: version 1.0.8, Windows + Android. Claude Code is supported; Codex is planned.
 
 ---
 
@@ -40,7 +40,7 @@ permission prompts, reply, stop Claude, type into its terminal and continue old 
 
 ## Quick start
 
-1. Download `AgentMon-1.0.7-windows-x64.zip` and `AgentMon-1.0.7-android.apk` from [Releases](../../releases).
+1. Download `AgentMon-1.0.8-windows-x64.zip` and `AgentMon-1.0.8-android.apk` from [Releases](../../releases).
 2. **Computer:** unzip to a permanent folder and start `AgentMon\AgentMon.exe`, then add the `cli` folder to PATH.
    ([Step 1](#step-1-install-on-the-computer))
 3. **Phone:** install the APK. ([Step 2](#step-2-install-the-phone-app))
@@ -106,13 +106,13 @@ Download from the [Releases](../../releases) page:
 
 | File | What it is |
 |---|---|
-| `AgentMon-1.0.7-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
-| `AgentMon-1.0.7-android.apk` | Phone app |
+| `AgentMon-1.0.8-windows-x64.zip` | Desktop agent (`AgentMon\AgentMon.exe`) and the wrapper (`cli\agentmon.exe`) |
+| `AgentMon-1.0.8-android.apk` | Phone app |
 
-1. **Unzip** `AgentMon-1.0.7-windows-x64.zip` to a folder you will keep, for example `C:\Users\<you>\AgentMon`.
+1. **Unzip** `AgentMon-1.0.8-windows-x64.zip` to a folder you will keep, for example `C:\Users\<you>\AgentMon`.
    You get:
    ```
-   AgentMon-1.0.7-windows-x64\
+   AgentMon-1.0.8-windows-x64\
      AgentMon\AgentMon.exe     the desktop agent
      cli\agentmon.exe          the wrapper you run instead of "claude"
      README.txt
@@ -127,14 +127,14 @@ Download from the [Releases](../../releases) page:
    - Press **Win**, type **environment**, and open **Edit environment variables for your account**.
    - Under **User variables**, select **Path**, click **Edit…**, then **New**.
    - Paste the full path of the `cli` folder, for example
-     `C:\Users\<you>\AgentMon\AgentMon-1.0.7-windows-x64\cli`.
+     `C:\Users\<you>\AgentMon\AgentMon-1.0.8-windows-x64\cli`.
    - Click **OK** on every window.
    - **Close and reopen** your terminals. In Android Studio, close and reopen the IDE.
-   - Check it in a new terminal: `agentmon --version` should print `agentmon 1.0.7`.
+   - Check it in a new terminal: `agentmon --version` should print `agentmon 1.0.8`.
 
    Or do the same in PowerShell:
    ```powershell
-   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.7-windows-x64\cli"
+   $dir = "C:\Users\<you>\AgentMon\AgentMon-1.0.8-windows-x64\cli"
    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User").TrimEnd(";") + ";" + $dir, "User")
    ```
 4. **Optional:** on the agent's **Overview** tab, turn on **Start with Windows**, so the phone can reach your
@@ -145,7 +145,7 @@ Download from the [Releases](../../releases) page:
 
 ## Step 2: Install the phone app
 
-1. Get `AgentMon-1.0.7-android.apk` onto the phone: open the Releases page in the phone's browser and download
+1. Get `AgentMon-1.0.8-android.apk` onto the phone: open the Releases page in the phone's browser and download
    it, or copy it over by cable or cloud drive.
 2. Tap the file. When Android asks, allow **Install unknown apps** for your browser or file manager, then tap
    **Install**. Play Protect may warn that the app is unknown; choose **Install anyway**.
@@ -257,7 +257,8 @@ Pairing happens once per phone. Only phones you approve on the computer can conn
 4. The phone shows the computer's fingerprint, and the computer shows the phone's. Check they match.
 5. On the computer, **approve** the phone and choose:
    - **which projects** it may see: all, or only some;
-   - whether it may **send input** (reply, approve, type, stop) or is **read-only**.
+   - whether it may **send input** (reply, approve, type, stop). This is **on by default**; turn off **Allow sending
+     input** to approve a watch-only (read-only) phone.
 6. The phone opens its Home screen and shows **Connected**.
 
 The QR code is valid for 2 minutes and works once; click **New code** if it expires. You can change a phone's
@@ -512,19 +513,19 @@ a JDK first, for example `winget install EclipseAdoptium.Temurin.21.JDK`.
 
 ```powershell
 $env:JPACKAGE_JDK = "C:\Program Files\Java\jdk-24"   # your JDK with jpackage
-.\scripts\package-release.ps1 -Version 1.0.7
+.\scripts\package-release.ps1 -Version 1.0.8
 ```
 
 This writes to `dist\`:
 
-- `AgentMon-1.0.7-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
-- `AgentMon-1.0.7-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
+- `AgentMon-1.0.8-windows-x64.zip`: `AgentMon\AgentMon.exe` and `cli\agentmon.exe`, each with a trimmed Java runtime.
+- `AgentMon-1.0.8-android.apk`: the phone app. It is debug-signed. For a store release, create your own signing
   key and keep it out of git; `*.jks` and `*.keystore` are ignored.
 
 Then upload both files to a new GitHub release, either through **Releases → Draft a new release** on GitHub, or:
 
 ```powershell
-gh release create v1.0.7 dist\AgentMon-1.0.7-windows-x64.zip dist\AgentMon-1.0.7-android.apk --title "AgentMon 1.0.7" --notes "First release"
+gh release create v1.0.8 dist\AgentMon-1.0.8-windows-x64.zip dist\AgentMon-1.0.8-android.apk --title "AgentMon 1.0.8" --notes "First release"
 ```
 
 ---

@@ -410,6 +410,9 @@ DataStore that is excluded from backups), and `AppSettingsModel` (theme, haptics
   Windows today. A real MSI needs `jpackage` (owner decision).
 - **D29** Session topics are prompt text, so they travel like snippets (to granted phones only) but are left out of
   alerts, and are never stored on the computer beyond the in-memory session.
+- **D30** (owner's decision, 2026-10-07) The approval dialog allows sending input by default. A read-only default kept
+  leaving freshly paired phones without a keyboard; read-only is still one switch away, and every grant can be changed
+  or revoked in Devices. Pairing itself still needs the 2-minute code, the fingerprint check and approval on the computer.
 - **D9** Push notifications use option A, a foreground service (owner's choice).
 - **D10** `AppRoot` (not `MainActivity`) applies the theme, because the theme mode comes from DataStore
   through `RootViewModel`.

@@ -32,8 +32,9 @@ import com.claude.codex.ai.monitoring.protocol.AgentCrypto
 import com.claude.codex.ai.monitoring.protocol.ProjectDto
 
 /**
- * "Approve <phone>?" (spec 6.2 step 3). Least privilege by default: read-only. The owner picks
- * which projects the phone may see. Nothing is stored unless Approve is pressed.
+ * "Approve <phone>?" (spec 6.2 step 3). Sending input is on by default (owner's decision D30: a phone is paired to
+ * control Claude, and a read-only default left phones without a keyboard); the switch turns it off for a watch-only
+ * phone. The owner picks which projects the phone may see. Nothing is stored unless Approve is pressed.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -44,7 +45,7 @@ fun ApprovalDialogContent(
     onReject: () -> Unit,
 ) {
     val colors = DesktopTheme.colors
-    var canSendInput by remember(pending.requestId) { mutableStateOf(false) }
+    var canSendInput by remember(pending.requestId) { mutableStateOf(true) }
     var allProjects by remember(pending.requestId) { mutableStateOf(true) }
     var selected by remember(pending.requestId) { mutableStateOf(emptySet<String>()) }
     val valid = allProjects || selected.isNotEmpty()
