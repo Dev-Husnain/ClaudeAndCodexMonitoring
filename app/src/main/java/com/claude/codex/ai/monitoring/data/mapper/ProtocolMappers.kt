@@ -1,5 +1,7 @@
 package com.claude.codex.ai.monitoring.data.mapper
 
+import com.claude.codex.ai.monitoring.domain.models.AvailableProjectModel
+import com.claude.codex.ai.monitoring.protocol.AvailableProjectDto
 import com.claude.codex.ai.monitoring.domain.models.AwaitingKind
 import com.claude.codex.ai.monitoring.domain.models.AwaitingModel
 import com.claude.codex.ai.monitoring.domain.models.ComputerModel
@@ -110,6 +112,15 @@ private const val RGB_MASK = 0xFFFFFF
 private const val PALETTE_MAX = 255
 
 fun PastSessionDto.toModel() = PastSessionModel(claudeSessionId = claudeSessionId, title = title, lastActiveAtMs = lastActiveAt)
+
+fun AvailableProjectDto.toModel() = AvailableProjectModel(
+    projectId = projectId,
+    name = name,
+    pathHint = pathHint,
+    conversations = conversations,
+    lastActiveAtMs = lastActiveAt,
+    monitored = monitored,
+)
 
 fun TerminalKeyType.toDto(): TerminalKey = when (this) {
     TerminalKeyType.ENTER -> TerminalKey.ENTER

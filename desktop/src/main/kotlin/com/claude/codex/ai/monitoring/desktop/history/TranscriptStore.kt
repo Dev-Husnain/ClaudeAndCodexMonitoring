@@ -32,6 +32,24 @@ class TranscriptStore(
             .take(limit)
             .mapNotNull { file -> read(file) }
 
+    /** One folder of Claude's saved conversations: where Claude worked, how many conversations, when last. */
+    data class ProjectFolder(val workingDirectory: Path?, val conversations: Int, val lastActiveAt: Long)
+
+    /** Every folder Claude Code saved conversations in, with the working directory read from its newest one. */
+    fun projectFolders(): List<ProjectFolder> {
+        val root = configDir.resolve("projects")
+        if (!root.isDirectory()) return emptyList()
+        return root.listDirectoryEntries().filter { it.isDirectory() }.mapNotNull { dir ->
+            val files = runCatching { dir.listDirectoryEntries("*.jsonl") }.getOrDefault(emptyList())
+                .filter { UUID.matches(it.nameWithoutExtension) }
+                .sortedByDescending { it.getLastModifiedTime().toMillis() }
+            if (files.isEmpty()) return@mapNotNull null
+            // The newest conversation names the folder best; older ones may come from a moved project.
+            val cwd = files.asSequence().take(CWD_PROBES).firstNotNullOfOrNull(::workingDirectory)?.toAbsolutePath()?.normalize()
+            ProjectFolder(cwd, files.size, files.first().getLastModifiedTime().toMillis())
+        }
+    }
+
     /** The transcript of [claudeSessionId] in [projectPath]'s folders, if Claude saved one. */
     fun find(projectPath: Path, claudeSessionId: String): Path? =
         transcriptsOf(projectPath).firstOrNull { it.nameWithoutExtension == claudeSessionId }
@@ -107,6 +125,7 @@ class TranscriptStore(
         private const val DEFAULT_LIMIT = 30
         private const val TITLE_CHARS = 120
         private const val HEAD_LINES = 200
+        private const val CWD_PROBES = 3
         private const val MAX_BYTES_PER_FILE = 8L * 1024 * 1024
         val UUID = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 

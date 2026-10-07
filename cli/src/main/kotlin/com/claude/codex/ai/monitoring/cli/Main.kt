@@ -4,7 +4,7 @@ import kotlin.system.exitProcess
 
 private val SESSION_ID = Regex("[A-Za-z0-9-]{8,64}")
 
-private const val VERSION = "1.0.8"
+private const val VERSION = "1.0.9"
 
 private val USAGE = """
     agentmon $VERSION: run Claude Code so AgentMon can show its terminal and type into it from your phone.

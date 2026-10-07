@@ -16,6 +16,7 @@ import com.claude.codex.ai.monitoring.presentation.devicessecurity.DevicesSecuri
 import com.claude.codex.ai.monitoring.presentation.home.HomeScreen
 import com.claude.codex.ai.monitoring.presentation.onboarding.OnboardingScreen
 import com.claude.codex.ai.monitoring.presentation.pair.PairScreen
+import com.claude.codex.ai.monitoring.presentation.computerprojects.ComputerProjectsScreen
 import com.claude.codex.ai.monitoring.presentation.pastsessions.PastSessionsScreen
 import com.claude.codex.ai.monitoring.presentation.sessiondetail.SessionDetailScreen
 import com.claude.codex.ai.monitoring.presentation.settings.SettingsScreen
@@ -73,6 +74,13 @@ fun AppNavHost(
                     onSessionClick = { sessionId -> backStack.add(Route.SessionDetail(sessionId)) },
                     onSettingsClick = { backStack.add(Route.Settings) },
                     onHistoryClick = { projectId, name -> backStack.add(Route.PastSessions(projectId, name)) },
+                    onComputerProjectsClick = { backStack.add(Route.ComputerProjects) },
+                )
+            }
+            entry<Route.ComputerProjects> {
+                ComputerProjectsScreen(
+                    onBack = pop,
+                    onOpenHistory = { projectId, name -> backStack.add(Route.PastSessions(projectId, name)) },
                 )
             }
             entry<Route.PastSessions> { route ->

@@ -6,6 +6,7 @@ import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
 import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
 import com.claude.codex.ai.monitoring.desktop.wrapper.TypeResult
+import com.claude.codex.ai.monitoring.protocol.AvailableProjectDto
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperInput
 import com.claude.codex.ai.monitoring.protocol.AwaitingDto
 import com.claude.codex.ai.monitoring.protocol.AwaitingKind
@@ -48,6 +49,14 @@ private sealed interface PermissionAnswer {
  *   while Claude is still working is queued and handed over at the next `Stop`.
  * With Away mode off, every hook is answered at once, so Claude behaves exactly as without AgentMon.
  */
+/** What the phone may do with "Projects on this computer". */
+interface ProjectAccess {
+    fun available(): List<AvailableProjectDto>
+
+    /** Starts watching [projectId] (as "Add project" would); detail = the project id on success. */
+    fun addFromPhone(projectId: String, by: String): Delivery
+}
+
 class ControlCenter(
     private val registry: SessionRegistry,
     private val audit: AuditLog,
@@ -69,6 +78,9 @@ class ControlCenter(
     /** Types into sessions started with `agentmon claude` (phase 5b). */
     @Volatile
     var wrapper: WrapperInput? = null
+
+    /** Projects on this computer for the phone (list and watch); set by the desktop app. */
+    var projectAccess: ProjectAccess? = null
 
     /** Continues saved conversations with `claude -p --resume` (phase 6). */
     @Volatile

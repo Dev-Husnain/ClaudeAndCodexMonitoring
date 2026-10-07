@@ -52,6 +52,9 @@ class ProtocolCodecTest {
         Message.ResumeSession("p1", "c1", "now add tests"),
         Message.StartTerminal("p1", "c1"),
         Message.StartTerminal("p1"),
+        Message.AvailableProjects,
+        Message.AddProject("p1"),
+        Message.AvailableProjectsResult(true, listOf(AvailableProjectDto("p1", "Shop", "Work\\Shop", 3, 10, monitored = false))),
         Message.TerminalScreen(
             "s1",
             columns = 120,

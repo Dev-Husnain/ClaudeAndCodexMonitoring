@@ -30,6 +30,7 @@ import com.claude.codex.ai.monitoring.desktop.simulator.DemoSessionSimulator
 import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
 import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
 import com.claude.codex.ai.monitoring.desktop.history.TranscriptStore
+import com.claude.codex.ai.monitoring.desktop.projects.ProjectDiscovery
 import com.claude.codex.ai.monitoring.desktop.storage.AppStorage
 import com.claude.codex.ai.monitoring.desktop.system.AutoStart
 import com.claude.codex.ai.monitoring.desktop.system.ComputerOptions
@@ -56,7 +57,7 @@ import kotlinx.coroutines.launch
 import java.net.InetAddress
 import java.nio.file.Path
 
-private const val VERSION = "1.0.8"
+private const val VERSION = "1.0.9"
 
 /**
  * Arguments: `--background` starts in the tray (used when starting with Windows); `--demo` adds fake sessions for trying
@@ -123,7 +124,9 @@ fun main(args: Array<String>) {
     computer.start(registry.state, control.awayMode)
     controller = DesktopController(
         registry, hub, devices, audit, pairing, identity, demoMode, projects, tracker, installer, control, scope, computer,
+        ProjectDiscovery(transcripts, projects),
     )
+    control.projectAccess = controller.projectAccess
 
     server.start()
     audit.record(AuditCategory.SERVER, "Agent started on ${ProtocolConstants.LOOPBACK_HOST}:${ProtocolConstants.DEFAULT_PORT}")

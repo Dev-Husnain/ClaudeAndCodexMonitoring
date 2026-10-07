@@ -25,6 +25,10 @@
 
     <!-- Relative time -->
     <string name="time_just_now">just now</string>
+    <plurals name="computer_projects_conversations">
+        <item quantity="one">%d conversation</item>
+        <item quantity="other">%d conversations</item>
+    </plurals>
     <plurals name="time_minutes_ago">
         <item quantity="one">%d min ago</item>
         <item quantity="other">%d min ago</item>
@@ -272,6 +276,19 @@
     <string name="history_resume">Continue</string>
     <string name="history_resuming">Starting…</string>
     <string name="history_new_session">Start a new Claude session</string>
+    <string name="computer_projects_title">Projects on this computer</string>
+    <string name="computer_projects_more">More projects on this computer</string>
+    <string name="computer_projects_hint">Folders Claude Code has worked in on your computer. Tap one to watch it here and open its history.</string>
+    <string name="computer_projects_hint_read_only">Folders Claude Code has worked in on your computer. This phone is read-only, so it can only open the ones already watched.</string>
+    <string name="computer_projects_watch">Watch</string>
+    <string name="computer_projects_watching">Watching</string>
+    <string name="computer_projects_adding">Adding…</string>
+    <string name="computer_projects_detail">%1$s · %2$s</string>
+    <string name="computer_projects_unavailable_title">Projects not available</string>
+    <string name="computer_projects_not_allowed_title">Not available for this phone</string>
+    <string name="computer_projects_not_allowed_message">This phone may only see chosen projects. To see every project on the computer, allow All projects for it under Devices on your computer.</string>
+    <string name="computer_projects_empty_title">No projects found</string>
+    <string name="computer_projects_empty_message">Projects show up here once Claude Code has saved a conversation in them on your computer.</string>
     <string name="history_open_terminal">Open in a terminal on your computer instead</string>
     <string name="detail_start_terminal">Open in a terminal on your computer</string>
     <string name="detail_terminal_starting">Opening a terminal…</string>

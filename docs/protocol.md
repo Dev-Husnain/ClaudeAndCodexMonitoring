@@ -27,6 +27,8 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | C→D | `away.set` | `enabled` *(addition, phase 5a)* |
 | C→D | `sessions.past` | `projectId` *(addition, phase 6)* |
 | C→D | `session.resume` | `projectId`, `claudeSessionId`, `text` *(phase 6; needs input permission; `ack.detail` = session to open)* |
+| C→D | `projects.available` | *(only phones with access to all projects get a list)* → `projects.available.result` |
+| C→D | `project.add` | `projectId` from that list *(needs input permission and all-projects access; `ack.detail` = project id)* |
 | C→D | `session.start` | `projectId`, `claudeSessionId?` *(opens `agentmon claude [--resume id]` in a terminal on the computer; needs input permission; `ack.detail` = session to open)* |
 | C→D | `terminal.attach` / `terminal.detach` | `sessionId` / – *(phase 5b; one terminal per connection)* |
 | C→D | `terminal.key` | `sessionId`, `key: ENTER/ESCAPE/TAB/SHIFT_TAB/UP/DOWN/CTRL_C/DIGIT_1..3` *(addition, phase 5b; needs input permission)* |
@@ -35,6 +37,7 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | D→C | `ready` | `computer`, `projects`, `sessions`, `canSendInput`, `awayMode` |
 | D→C | `away.update` | `enabled` *(addition, phase 5a; sent to every connected phone)* |
 | D→C | `session.update` | `session` (incl. `claudeSessionId` when it differs from `sessionId`, and `title`, the conversation's topic, once known) |
+| D→C | `projects.available.result` | `allowed`, `projects[{projectId, name, pathHint, conversations, lastActiveAt, monitored}]` *(folders Claude Code saved conversations in; `allowed=false` and an empty list for limited phones; the full path stays on the computer)* |
 | D→C | `sessions.past.result` | `projectId`, `sessions[{claudeSessionId, title, lastActiveAt}]` *(addition, phase 6)* |
 | D→C | `session.event` | `sessionId`, `event` |
 | D→C | `session.removed` | `sessionId`, `projectId` *(addition: ended sessions are forgotten after 1 h, idle ones after 24 h)* |

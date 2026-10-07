@@ -11,7 +11,13 @@ import com.claude.codex.ai.monitoring.desktop.pairing.PairingManager
 import com.claude.codex.ai.monitoring.desktop.security.DesktopIdentity
 import com.claude.codex.ai.monitoring.desktop.hooks.HookInstaller
 import com.claude.codex.ai.monitoring.desktop.projects.MonitoredProject
+import com.claude.codex.ai.monitoring.desktop.projects.ProjectDiscovery
 import com.claude.codex.ai.monitoring.desktop.projects.ProjectStore
+import com.claude.codex.ai.monitoring.desktop.control.Delivery
+import com.claude.codex.ai.monitoring.desktop.control.ProjectAccess
+import com.claude.codex.ai.monitoring.protocol.AvailableProjectDto
+import com.claude.codex.ai.monitoring.protocol.DeliveryResult
+import kotlinx.coroutines.delay
 import com.claude.codex.ai.monitoring.desktop.server.ConnectionHub
 import com.claude.codex.ai.monitoring.desktop.session.SessionTracker
 import com.claude.codex.ai.monitoring.protocol.ProjectDto
@@ -50,6 +56,7 @@ class DesktopController(
     val control: ControlCenter,
     private val scope: CoroutineScope,
     val computer: ComputerOptions,
+    private val discovery: ProjectDiscovery,
 ) {
     fun setAwayMode(enabled: Boolean) = control.setAwayMode(enabled, by = "desktop")
 
@@ -84,14 +91,34 @@ class DesktopController(
         projects.projectFor(cwd)?.let { return it.projectId }
         val dir = runCatching { Path.of(cwd).toAbsolutePath().normalize() }.getOrNull() ?: return null
         if (!ProjectStore.canAutoMonitor(dir)) return null
-        return runCatching {
-            installer.install(dir)
-            val project = projects.add(dir)
-            registry.upsertProject(ProjectDto(project.projectId, project.name))
-            scope.launch { hub.reconnectAll() }
-            audit.record(AuditCategory.ACCESS, "Monitoring \"${project.name}\" (started with agentmon claude)")
-            project.projectId
-        }.onFailure { _projectError.value = "Could not monitor ${dir.fileName}: ${it.message}" }.getOrNull()
+        return monitor(dir, "started with agentmon claude").getOrNull()
+    }
+
+    /** Installs the hooks and watches [dir]; phones reconnect (a moment later, after any answer) to learn its name. */
+    private fun monitor(dir: Path, how: String): Result<String> = runCatching {
+        installer.install(dir)
+        val project = projects.add(dir)
+        registry.upsertProject(ProjectDto(project.projectId, project.name))
+        scope.launch {
+            delay(RECONNECT_AFTER_ADD_MS)
+            hub.reconnectAll()
+        }
+        audit.record(AuditCategory.ACCESS, "Monitoring \"${project.name}\" ($how)")
+        project.projectId
+    }.onFailure { _projectError.value = "Could not monitor ${dir.fileName}: ${it.message}" }
+
+    /** "Projects on this computer" for the phone. */
+    val projectAccess: ProjectAccess = object : ProjectAccess {
+        override fun available(): List<AvailableProjectDto> = discovery.discover().map { it.dto }
+
+        override fun addFromPhone(projectId: String, by: String): Delivery {
+            val found = discovery.find(projectId) ?: return Delivery(DeliveryResult.FAILED, "This project is no longer on this computer")
+            if (found.dto.monitored) return Delivery(DeliveryResult.DELIVERED, found.dto.projectId)
+            return monitor(found.path, "added from $by").fold(
+                onSuccess = { Delivery(DeliveryResult.DELIVERED, it) },
+                onFailure = { Delivery(DeliveryResult.FAILED, "Could not watch this project: ${it.message.orEmpty().take(200)}") },
+            )
+        }
     }
 
     fun reinstallHooks(project: MonitoredProject) {
@@ -183,6 +210,7 @@ class DesktopController(
     }
 
     private companion object {
+        const val RECONNECT_AFTER_ADD_MS = 1_500L
         const val PROBE_TIMEOUT_S = 4L
         const val HTTP_OK = 200
     }

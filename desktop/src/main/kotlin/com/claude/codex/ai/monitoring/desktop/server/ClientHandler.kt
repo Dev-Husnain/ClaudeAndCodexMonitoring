@@ -128,8 +128,17 @@ class ClientHandler(
                     !grant.allows(message.projectId) -> Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", frame.id)
                     else -> Message.PastSessionsResult(message.projectId, control?.pastSessions(message.projectId).orEmpty())
                 }
+                // Only phones that may see every project learn which projects exist.
+                Message.AvailableProjects -> {
+                    val access = control?.projectAccess
+                    if (grant.allProjects && access != null) {
+                        Message.AvailableProjectsResult(allowed = true, projects = access.available())
+                    } else {
+                        Message.AvailableProjectsResult(allowed = false, projects = emptyList())
+                    }
+                }
                 is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode, is Message.TerminalKeyRequest,
-                is Message.ResumeSession, is Message.StartTerminal ->
+                is Message.ResumeSession, is Message.StartTerminal, is Message.AddProject ->
                     if (!grant.canSendInput) {
                         Message.Error(ErrorCode.READ_ONLY, "This device is read-only", frame.id)
                     } else {
@@ -168,6 +177,12 @@ class ClientHandler(
         if (message is Message.SetAwayMode) {
             center.setAwayMode(message.enabled, by = device.name)
             return Message.Ack(ackId, DeliveryResult.DELIVERED)
+        }
+        if (message is Message.AddProject) {
+            val access = center.projectAccess
+            if (!device.grant.allProjects || access == null) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)
+            val delivery = access.addFromPhone(message.projectId, by = device.name)
+            return Message.Ack(ackId, delivery.result, delivery.detail)
         }
         if (message is Message.StartTerminal) {
             if (!device.grant.allows(message.projectId)) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)

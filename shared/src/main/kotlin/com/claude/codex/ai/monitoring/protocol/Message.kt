@@ -45,6 +45,19 @@ sealed interface Message {
     @SerialName("away.set")
     data class SetAwayMode(val enabled: Boolean) : Message
 
+    /**
+     * The projects Claude Code worked in on this computer. Only for phones with access to all projects; answered
+     * with [AvailableProjectsResult].
+     */
+    @Serializable
+    @SerialName("projects.available")
+    data object AvailableProjects : Message
+
+    /** Start watching a project from [AvailableProjectsResult]. Needs input permission; `ack.detail` = its id. */
+    @Serializable
+    @SerialName("project.add")
+    data class AddProject(val projectId: String) : Message
+
     /** The saved conversations of a project, newest first. Answered with [PastSessionsResult]. */
     @Serializable
     @SerialName("sessions.past")
@@ -142,6 +155,11 @@ sealed interface Message {
     @Serializable
     @SerialName("sessions.past.result")
     data class PastSessionsResult(val projectId: String, val sessions: List<PastSessionDto>) : Message
+
+    /** Reply to [AvailableProjects]; [allowed] is false for phones limited to chosen projects (the list is then empty). */
+    @Serializable
+    @SerialName("projects.available.result")
+    data class AvailableProjectsResult(val allowed: Boolean, val projects: List<AvailableProjectDto>) : Message
 
     @Serializable
     @SerialName("ack")

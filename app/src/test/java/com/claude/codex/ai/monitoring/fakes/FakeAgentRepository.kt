@@ -1,5 +1,6 @@
 package com.claude.codex.ai.monitoring.fakes
 
+import com.claude.codex.ai.monitoring.domain.models.AvailableProjectsModel
 import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
@@ -74,6 +75,16 @@ class FakeAgentRepository(initial: AgentSnapshotModel = AgentSnapshotModel()) : 
     }
 
     val terminalStarts = mutableListOf<Pair<String, String?>>()
+
+    var available: AvailableProjectsModel? = AvailableProjectsModel(allowed = true, projects = emptyList())
+    val addedProjects = mutableListOf<String>()
+
+    override suspend fun availableProjects(): AvailableProjectsModel? = available
+
+    override suspend fun addProject(projectId: String): DeliveryStatus {
+        addedProjects += projectId
+        return nextDelivery
+    }
 
     override suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel {
         terminalStarts += projectId to claudeSessionId

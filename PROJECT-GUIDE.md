@@ -210,6 +210,17 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Projects on this computer (v1.0.9)
+- [x] `ProjectDiscovery` lists the folders Claude Code saved conversations in (`TranscriptStore.projectFolders`: the
+  working directory of a folder's newest transcripts), merged into monitored projects when inside one, without home,
+  folders above it, drive roots or missing folders; monitored projects without transcripts are included
+- [x] Protocol: `projects.available` → `projects.available.result {allowed, projects}` (only for all-projects grants;
+  the full path stays on the computer, phones get the last two parts) and `project.add {projectId}` (input + all
+  projects), which watches it like "Add project" (hooks, audit) and reconnects phones 1.5 s after answering
+- [x] Phone: "Projects on this computer" (Home footer and empty state): Watch → History opens; watched → History.
+  Tests: discovery (3), view model (3), codec
+- [ ] Not tried on a device yet
+
 ### Delivery confirmation, terminal conversations, start Claude from the phone (v1.0.7)
 - [x] **Delivery is confirmed by the wrapper.** `hello.features = ["input-ack"]`; typed text and Enter carry ids and
   the wrapper answers `input.ack` once written. The phone sees "Delivered" only after both acks; no ack within 4 s

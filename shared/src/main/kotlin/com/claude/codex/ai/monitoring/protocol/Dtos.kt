@@ -79,6 +79,21 @@ data class TerminalSpanDto(
     }
 }
 
+/**
+ * A folder Claude Code worked in on the computer, for the phone's "Projects on this computer". The full path stays on
+ * the computer; [pathHint] is its last two parts.
+ */
+@Serializable
+data class AvailableProjectDto(
+    val projectId: String,
+    val name: String,
+    val pathHint: String,
+    val conversations: Int,
+    val lastActiveAt: Long,
+    /** AgentMon already watches it (it is on the phone's home screen). */
+    val monitored: Boolean,
+)
+
 /** A conversation Claude Code saved for a project (its transcript), offered for resuming from the phone. */
 @Serializable
 data class PastSessionDto(

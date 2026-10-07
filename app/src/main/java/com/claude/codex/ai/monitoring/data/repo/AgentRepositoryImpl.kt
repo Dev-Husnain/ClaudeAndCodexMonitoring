@@ -14,6 +14,7 @@ import com.claude.codex.ai.monitoring.domain.models.ConnectionStatus
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.AvailableProjectsModel
 import com.claude.codex.ai.monitoring.domain.models.ResumeOutcomeModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
 import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
@@ -71,6 +72,9 @@ class AgentRepositoryImpl(
     /** Requests waiting for the desktop's `ack` / `error`, by envelope id. */
     private val pendingAcks = ConcurrentHashMap<String, CompletableDeferred<Message>>()
     private val pendingPastSessions = ConcurrentHashMap<String, CompletableDeferred<List<PastSessionModel>>>()
+
+    @Volatile
+    private var pendingAvailableProjects: CompletableDeferred<AvailableProjectsModel>? = null
     private val reconnectRequests = Channel<Unit>(Channel.CONFLATED)
 
     /** The terminal a screen is showing (at most one), re-attached after every reconnect. */
@@ -177,6 +181,20 @@ class AgentRepositoryImpl(
         return ResumeOutcomeModel(status, sessionId)
     }
 
+    override suspend fun availableProjects(): AvailableProjectsModel? {
+        if (state.value.connection !is ConnectionStatus.Connected) return null
+        val reply = CompletableDeferred<AvailableProjectsModel>()
+        pendingAvailableProjects = reply
+        return try {
+            if (outgoing.trySend(OutgoingMessage(Message.AvailableProjects)).isFailure) return null
+            withTimeoutOrNull(ACK_TIMEOUT_MS) { reply.await() }
+        } finally {
+            if (pendingAvailableProjects === reply) pendingAvailableProjects = null
+        }
+    }
+
+    override suspend fun addProject(projectId: String): DeliveryStatus = requestWithDetail(Message.AddProject(projectId)).first
+
     override suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel {
         val (status, sessionId) = requestWithDetail(Message.StartTerminal(projectId, claudeSessionId))
         return ResumeOutcomeModel(status, sessionId)
@@ -215,6 +233,8 @@ class AgentRepositoryImpl(
                         // Kept out of the snapshot: screens change often and only the open one matters.
                         is Message.TerminalScreen -> terminalScreen.value = message.sessionId to message.toModel()
                         is Message.PastSessionsResult -> pendingPastSessions[message.projectId]?.complete(message.sessions.map { it.toModel() })
+                        is Message.AvailableProjectsResult ->
+                            pendingAvailableProjects?.complete(AvailableProjectsModel(message.allowed, message.projects.map { it.toModel() }))
                         is Message.Ready -> attachedTerminal.value?.let { outgoing.trySend(OutgoingMessage(Message.TerminalAttach(it))) }
                         else -> Unit
                     }

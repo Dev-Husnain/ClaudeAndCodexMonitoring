@@ -4,6 +4,7 @@ import com.claude.codex.ai.monitoring.domain.models.AgentSnapshotModel
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.PastSessionModel
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
+import com.claude.codex.ai.monitoring.domain.models.AvailableProjectsModel
 import com.claude.codex.ai.monitoring.domain.models.ResumeOutcomeModel
 import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
 import com.claude.codex.ai.monitoring.domain.models.TerminalScreenModel
@@ -45,4 +46,10 @@ interface AgentRepository {
      * new conversation when null. On success the outcome names the session to open.
      */
     suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel
+
+    /** The projects Claude worked in on the computer; null when it did not answer. */
+    suspend fun availableProjects(): AvailableProjectsModel?
+
+    /** Starts watching a project from [availableProjects]. */
+    suspend fun addProject(projectId: String): DeliveryStatus
 }

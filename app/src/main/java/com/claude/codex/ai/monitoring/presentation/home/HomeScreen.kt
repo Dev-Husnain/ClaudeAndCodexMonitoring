@@ -30,6 +30,7 @@ fun HomeScreen(
     onSessionClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onHistoryClick: (projectId: String, projectName: String) -> Unit,
+    onComputerProjectsClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -108,6 +109,9 @@ fun HomeScreen(
                     icon = R.drawable.ic_terminal,
                     title = stringResource(R.string.home_empty_title),
                     message = stringResource(R.string.home_empty_message),
+                    actionLabel = stringResource(R.string.computer_projects_title),
+                    actionIcon = R.drawable.ic_terminal,
+                    onAction = onComputerProjectsClick,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 else -> HomeSessionList(
@@ -118,6 +122,7 @@ fun HomeScreen(
                     onSessionLongClick = { viewModel.onEvent(HomeEvent.OnRemoveRequest(it)) },
                     onHistoryClick = onHistoryClick,
                     onRemoveProjectClick = { viewModel.onEvent(HomeEvent.OnRemoveProjectRequest(it)) },
+                    onComputerProjectsClick = onComputerProjectsClick,
                 )
             }
         }

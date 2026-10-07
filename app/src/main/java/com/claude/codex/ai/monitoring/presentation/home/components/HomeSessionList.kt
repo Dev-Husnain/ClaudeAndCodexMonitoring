@@ -40,6 +40,7 @@ fun HomeSessionList(
     onSessionLongClick: (String) -> Unit = {},
     onHistoryClick: (projectId: String, projectName: String) -> Unit = { _, _ -> },
     onRemoveProjectClick: (projectId: String) -> Unit = {},
+    onComputerProjectsClick: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     // "Needs you" is inserted above what is on screen, where the scroll anchor would hide it.
@@ -110,6 +111,12 @@ fun HomeSessionList(
                     onLongClick = { onSessionLongClick(session.sessionId) },
                     modifier = Modifier.animateItem(),
                 )
+            }
+        }
+        item(key = "computer-projects", contentType = "action") {
+            // Projects AgentMon does not watch yet: watch one from here and reach its History.
+            TextButton(onClick = onComputerProjectsClick, modifier = Modifier.padding(top = Dimens.SpaceSm).animateItem()) {
+                Text(text = stringResource(R.string.computer_projects_more), color = AppTheme.colors.brandEnd)
             }
         }
     }
