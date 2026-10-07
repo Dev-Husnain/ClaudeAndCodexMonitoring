@@ -58,6 +58,14 @@ sealed interface Message {
     @SerialName("session.resume")
     data class ResumeSession(val projectId: String, val claudeSessionId: String, val text: String) : Message
 
+    /**
+     * Open a terminal on the computer running Claude through `agentmon claude`: continuing [claudeSessionId], or a
+     * new conversation when it is null. Needs input permission; `ack.detail` is the session id to open.
+     */
+    @Serializable
+    @SerialName("session.start")
+    data class StartTerminal(val projectId: String, val claudeSessionId: String? = null) : Message
+
     /** Start receiving [TerminalScreen] for a wrapper session (one terminal per connection). */
     @Serializable
     @SerialName("terminal.attach")

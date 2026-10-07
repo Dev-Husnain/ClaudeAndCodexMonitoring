@@ -7,6 +7,7 @@ import com.claude.codex.ai.monitoring.core.ui.StatusTone
 import com.claude.codex.ai.monitoring.core.utils.Clock
 import com.claude.codex.ai.monitoring.core.utils.UiText
 import com.claude.codex.ai.monitoring.core.utils.ticks
+import com.claude.codex.ai.monitoring.domain.models.SessionModel
 import com.claude.codex.ai.monitoring.domain.models.DeliveryStatus
 import com.claude.codex.ai.monitoring.domain.models.QuickActionType
 import com.claude.codex.ai.monitoring.domain.models.TerminalKeyType
@@ -62,7 +63,10 @@ class SessionDetailViewModel(
 
     init {
         viewModelScope.launch {
-            combine(observeSessionDetail(sessionId), clock.ticks()) { detail, now -> detail.toUiState(now) }
+            combine(observeSessionDetail(sessionId), clock.ticks()) { detail, now ->
+                session = detail.session
+                detail.toUiState(now)
+            }
                 .collect { fresh -> _sessionDetailUiState.update { previous -> fresh.withLocalFrom(previous) } }
         }
     }
@@ -83,6 +87,7 @@ class SessionDetailViewModel(
             SessionDetailEvent.OnStopClick -> _sessionDetailUiState.update { it.copy(showStopConfirm = it.canStop) }
             SessionDetailEvent.OnStopDismiss -> _sessionDetailUiState.update { it.copy(showStopConfirm = false) }
             SessionDetailEvent.OnStopConfirm -> stop()
+            SessionDetailEvent.OnStartTerminalClick -> startTerminal()
         }
     }
 
@@ -109,6 +114,29 @@ class SessionDetailViewModel(
         viewModelScope.launch {
             val status = agentRepository.quickAction(sessionId, QuickActionType.INTERRUPT)
             finishSending(status, clearComposer = false, note = status.toStopNote())
+        }
+    }
+
+    /** The newest session from the computer, for requests that need its project or Claude's id. */
+    private var session: SessionModel? = null
+
+    private fun startTerminal() {
+        val current = session ?: return
+        if (_sessionDetailUiState.value.startingTerminal) return
+        _sessionDetailUiState.update { it.copy(startingTerminal = true, deliveryNote = UiText.Res(R.string.detail_terminal_starting), deliveryTone = StatusTone.STALE) }
+        viewModelScope.launch {
+            // Claude's own id: recorded for terminals, and the session id itself for plain hooked sessions.
+            val claudeId = current.claudeSessionId ?: current.sessionId.takeIf { CLAUDE_ID.matches(it) }
+            val outcome = agentRepository.startTerminal(current.projectId, claudeId)
+            val opened = outcome.sessionId
+            if (outcome.status !is DeliveryStatus.Failed && opened != null) {
+                _sessionDetailUiState.update { it.copy(startingTerminal = false, deliveryNote = null) }
+                _effects.send(SessionDetailEffect.OpenSession(opened))
+            } else {
+                val failure = outcome.status as? DeliveryStatus.Failed
+                val note = failure?.detail?.let { UiText.Raw(it) } ?: UiText.Res(R.string.delivery_rejected)
+                _sessionDetailUiState.update { it.copy(startingTerminal = false, deliveryNote = note, deliveryTone = StatusTone.ERROR) }
+            }
         }
     }
 
@@ -158,5 +186,6 @@ class SessionDetailViewModel(
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+        val CLAUDE_ID = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     }
 }

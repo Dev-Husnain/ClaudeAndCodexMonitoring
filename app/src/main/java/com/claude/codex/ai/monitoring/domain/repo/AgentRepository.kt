@@ -39,4 +39,10 @@ interface AgentRepository {
 
     /** Continues a saved conversation with [text] as the next prompt. */
     suspend fun resumeSession(projectId: String, claudeSessionId: String, text: String): ResumeOutcomeModel
+
+    /**
+     * Opens a terminal on the computer running Claude through `agentmon claude`: continuing [claudeSessionId], or a
+     * new conversation when null. On success the outcome names the session to open.
+     */
+    suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel
 }

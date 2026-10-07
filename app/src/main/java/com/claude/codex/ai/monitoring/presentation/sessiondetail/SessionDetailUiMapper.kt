@@ -37,6 +37,7 @@ fun SessionDetailModel.toUiState(nowMs: Long): SessionDetailUiState {
         // An ended conversation can be continued: the computer resumes it with the message.
         showComposer = canSendInput && session != null,
         resumable = session?.status == SessionStatus.ENDED,
+        canStartTerminal = canSendInput && session?.status == SessionStatus.ENDED,
         startedFromPhone = session?.control == SessionControl.HEADLESS,
         awayMode = awayMode,
         awaiting = session?.awaiting?.let { AwaitingUiModel(isPermission = it.kind == AwaitingKind.PERMISSION, detail = it.detail) },

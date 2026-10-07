@@ -271,8 +271,12 @@
     <string name="history_resume_hint">Claude picks up where it left off, on your computer.</string>
     <string name="history_resume">Continue</string>
     <string name="history_resuming">Starting…</string>
+    <string name="history_new_session">Start a new Claude session</string>
+    <string name="history_open_terminal">Open in a terminal on your computer instead</string>
+    <string name="detail_start_terminal">Open in a terminal on your computer</string>
+    <string name="detail_terminal_starting">Opening a terminal…</string>
     <string name="detail_headless_hint">Started from your phone: Claude asks you here before it uses a tool.</string>
-    <string name="detail_resume_hint">This session ended. Sending a message continues it on your computer.</string>
+    <string name="detail_resume_hint">This session ended. Open it in a terminal to see and type into Claude, or send a message to continue it in the background.</string>
     <string name="remove_session_title">Remove from this phone?</string>
     <string name="remove_session_message">It disappears from this phone\'s list only. Nothing changes on your computer, and it comes back if Claude works in it again.</string>
     <string name="remove_session_confirm">Remove from this phone</string>

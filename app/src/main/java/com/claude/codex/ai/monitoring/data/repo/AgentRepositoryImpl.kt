@@ -177,6 +177,11 @@ class AgentRepositoryImpl(
         return ResumeOutcomeModel(status, sessionId)
     }
 
+    override suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel {
+        val (status, sessionId) = requestWithDetail(Message.StartTerminal(projectId, claudeSessionId))
+        return ResumeOutcomeModel(status, sessionId)
+    }
+
     private suspend fun runConnection(pairing: PairingModel) {
         val url = pairing.webSocketUrl()
         val desktopKey = AgentCrypto.decodePublicKey(pairing.desktopPublicKey)

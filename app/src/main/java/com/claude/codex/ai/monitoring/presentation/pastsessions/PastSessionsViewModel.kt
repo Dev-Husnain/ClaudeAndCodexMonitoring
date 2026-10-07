@@ -87,6 +87,8 @@ class PastSessionsViewModel(
             is PastSessionsEvent.OnResumeTextChange -> _pastSessionsUiState.update { it.copy(resumeText = event.text, resumeError = null) }
             PastSessionsEvent.OnResumeDismiss -> _pastSessionsUiState.update { if (it.resuming) it else it.copy(resumeTarget = null) }
             PastSessionsEvent.OnResumeConfirm -> resume()
+            PastSessionsEvent.OnNewSessionClick -> startTerminal(claudeSessionId = null)
+            PastSessionsEvent.OnResumeInTerminal -> _pastSessionsUiState.value.resumeTarget?.let { startTerminal(it.claudeSessionId) }
             PastSessionsEvent.OnRemoveDismiss -> _pastSessionsUiState.update { it.copy(removeTarget = null) }
             PastSessionsEvent.OnRemoveConfirm -> {
                 val target = _pastSessionsUiState.value.removeTarget ?: return
@@ -104,6 +106,26 @@ class PastSessionsViewModel(
             val sessions = agentRepository.pastSessions(projectId)
             past.value = sessions
             _pastSessionsUiState.update { it.copy(isLoading = false, isUnavailable = sessions == null) }
+        }
+    }
+
+    /** Opens a terminal on the computer (continuing [claudeSessionId] when given) and shows its session. */
+    private fun startTerminal(claudeSessionId: String?) {
+        if (_pastSessionsUiState.value.startingTerminal || _pastSessionsUiState.value.resuming) return
+        _pastSessionsUiState.update { it.copy(startingTerminal = true, startError = null, resumeError = null) }
+        viewModelScope.launch {
+            val outcome = agentRepository.startTerminal(projectId, claudeSessionId)
+            val sessionId = outcome.sessionId
+            if (outcome.status !is DeliveryStatus.Failed && sessionId != null) {
+                _pastSessionsUiState.update { it.copy(startingTerminal = false, resumeTarget = null, resumeText = "") }
+                _effects.send(PastSessionsEffect.OpenSession(sessionId))
+            } else {
+                val failure = outcome.status as? DeliveryStatus.Failed
+                val message = failure?.detail?.let { UiText.Raw(it) } ?: UiText.Res(R.string.delivery_rejected)
+                _pastSessionsUiState.update {
+                    if (it.resumeTarget != null) it.copy(startingTerminal = false, resumeError = message) else it.copy(startingTerminal = false, startError = message)
+                }
+            }
         }
     }
 

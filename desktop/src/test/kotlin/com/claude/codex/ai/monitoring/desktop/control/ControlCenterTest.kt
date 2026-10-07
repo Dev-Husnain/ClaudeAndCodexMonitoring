@@ -98,7 +98,7 @@ class ControlCenterTest {
     }
 
     @Test
-    fun `answers without anything held fail clearly`() {
+    fun `answers without anything held fail clearly`() = runBlocking {
         assertEquals(DeliveryResult.FAILED, control.quickAction("s1", QuickAction.APPROVE).result)
         assertEquals(DeliveryResult.FAILED, control.deliverText("missing", "hi").result)
     }

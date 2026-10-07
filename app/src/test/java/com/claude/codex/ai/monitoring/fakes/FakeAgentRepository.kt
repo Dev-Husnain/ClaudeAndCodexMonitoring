@@ -72,4 +72,11 @@ class FakeAgentRepository(initial: AgentSnapshotModel = AgentSnapshotModel()) : 
         resumes += Triple(projectId, claudeSessionId, text)
         return ResumeOutcomeModel(nextDelivery, nextResumeSessionId.takeIf { nextDelivery !is DeliveryStatus.Failed })
     }
+
+    val terminalStarts = mutableListOf<Pair<String, String?>>()
+
+    override suspend fun startTerminal(projectId: String, claudeSessionId: String?): ResumeOutcomeModel {
+        terminalStarts += projectId to claudeSessionId
+        return ResumeOutcomeModel(nextDelivery, nextResumeSessionId.takeIf { nextDelivery !is DeliveryStatus.Failed })
+    }
 }

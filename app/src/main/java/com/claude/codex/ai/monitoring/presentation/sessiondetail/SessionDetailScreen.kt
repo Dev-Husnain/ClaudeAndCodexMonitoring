@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.Dimens
+import com.claude.codex.ai.monitoring.core.ui.GradientButton
 import com.claude.codex.ai.monitoring.core.ui.AppTopBar
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.ConfirmDialog
@@ -41,6 +42,7 @@ import org.koin.core.parameter.parametersOf
 fun SessionDetailScreen(
     sessionId: String,
     onBack: () -> Unit,
+    onOpenSession: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SessionDetailViewModel = koinViewModel(key = sessionId) { parametersOf(sessionId) },
 ) {
@@ -50,6 +52,7 @@ fun SessionDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
+                is SessionDetailEffect.OpenSession -> onOpenSession(effect.sessionId)
                 is SessionDetailEffect.Haptic -> haptics.performHapticFeedback(
                     if (effect.success) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
                 )
@@ -144,6 +147,17 @@ fun SessionDetailScreen(
                             onContinue = { viewModel.onEvent(SessionDetailEvent.OnQuickAction(QuickActionType.CONTINUE)) },
                             onAwayModeToggle = { viewModel.onEvent(SessionDetailEvent.OnAwayModeToggle(it)) },
                             modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (state.canStartTerminal) {
+                        GradientButton(
+                            text = stringResource(if (state.startingTerminal) R.string.detail_terminal_starting else R.string.detail_start_terminal),
+                            onClick = { viewModel.onEvent(SessionDetailEvent.OnStartTerminalClick) },
+                            enabled = !state.startingTerminal && !state.isOffline,
+                            leadingIcon = R.drawable.ic_play,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = Dimens.ScreenPadding, end = Dimens.ScreenPadding, top = Dimens.SpaceMd),
                         )
                     }
                     if (state.canStop) {

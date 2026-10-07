@@ -72,6 +72,8 @@ class SessionTracker(
         return when (hook.eventName) {
             "Stop" -> fromTranscript()?.let { TitleUpdate.Set(it) } ?: TitleUpdate.Keep
             "SessionStart" -> fromTranscript()?.let { TitleUpdate.Set(it) } ?: TitleUpdate.Clear
+            // The conversation ended or the terminal moved on to another one (/clear, /resume).
+            "SessionEnd" -> TitleUpdate.Clear
             "UserPromptSubmit" -> hook.prompt?.trim()?.takeIf { it.isNotEmpty() && !it.startsWith("/") && !it.startsWith("<") }
                 ?.let(::shorten)?.let { TitleUpdate.IfMissing(it) } ?: TitleUpdate.Keep
             else -> TitleUpdate.Keep

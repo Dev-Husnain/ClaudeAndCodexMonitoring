@@ -220,4 +220,22 @@ class SessionDetailViewModelTest {
         vm.onEvent(SessionDetailEvent.OnStopClick)
         assertFalse(vm.sessionDetailUiState.value.showStopConfirm)
     }
+
+    @Test
+    fun `an ended conversation opens in a terminal on the computer and the phone moves to it`() {
+        repository.snapshot.value = repository.snapshot.value.copy(
+            sessions = listOf(sessionModel("s1", status = SessionStatus.ENDED).copy(claudeSessionId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")),
+        )
+        repository.nextResumeSessionId = "terminal-1"
+        val vm = viewModel()
+        val effects = mutableListOf<SessionDetailEffect>()
+        kotlinx.coroutines.CoroutineScope(main).launch { vm.effects.collect { effects += it } }
+        runCurrent()
+        assertTrue(vm.sessionDetailUiState.value.canStartTerminal)
+
+        vm.onEvent(SessionDetailEvent.OnStartTerminalClick)
+        runCurrent()
+        assertEquals(listOf<Pair<String, String?>>("p1" to "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), repository.terminalStarts.toList())
+        assertEquals(listOf<SessionDetailEffect>(SessionDetailEffect.OpenSession("terminal-1")), effects)
+    }
 }

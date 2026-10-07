@@ -24,7 +24,7 @@ import kotlin.concurrent.thread
  * Claude gets `AGENTMON_WRAPPER_ID` in its environment; its hooks send it back so the agent knows
  * which session this terminal belongs to.
  */
-class WrapperSession(private val args: List<String>) {
+class WrapperSession(private val args: List<String>, private val sessionId: String? = null) {
 
     fun run(): Int {
         val command = ClaudeCommand.resolve(args)
@@ -46,7 +46,7 @@ class WrapperSession(private val args: List<String>) {
             .build()
         val columns = terminal.width.takeIf { it > 0 } ?: DEFAULT_COLUMNS
         val rows = terminal.height.takeIf { it > 0 } ?: DEFAULT_ROWS
-        val wrapperId = UUID.randomUUID().toString()
+        val wrapperId = sessionId ?: UUID.randomUUID().toString()
         val cwd = System.getProperty("user.dir")
 
         val process: PtyProcess = PtyProcessBuilder(command.toTypedArray())
@@ -70,8 +70,8 @@ class WrapperSession(private val args: List<String>) {
         val link = secret?.let {
             AgentLink(
                 secret = it,
-                hello = { WrapperMessage.Hello(wrapperId, cwd, size.first, size.second) },
-                onInput = { data -> typeIntoClaude(data.toByteArray(Charsets.UTF_8)) },
+                hello = { WrapperMessage.Hello(wrapperId, cwd, size.first, size.second, listOf(WrapperMessage.FEATURE_INPUT_ACK)) },
+                onInput = { data -> typeIntoClaude(data.toByteArray(Charsets.UTF_8)).isSuccess },
             ).also { link -> link.start(scope) }
         }
 

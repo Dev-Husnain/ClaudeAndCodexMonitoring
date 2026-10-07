@@ -1,6 +1,7 @@
 package com.claude.codex.ai.monitoring.desktop.session
 
 import com.claude.codex.ai.monitoring.desktop.hooks.HookEventDto
+import com.claude.codex.ai.monitoring.protocol.ControlMode
 import com.claude.codex.ai.monitoring.protocol.EventKind
 import com.claude.codex.ai.monitoring.protocol.SessionDto
 import com.claude.codex.ai.monitoring.protocol.SessionState
@@ -78,5 +79,15 @@ class SessionStateMachineTest {
         assertNull(SessionStateMachine.markStale(running, nowMs = 60_000, staleAfterMs = 120_000))
         assertEquals(SessionState.STALE, SessionStateMachine.markStale(running, nowMs = 200_000, staleAfterMs = 120_000)?.state)
         assertNull(SessionStateMachine.markStale(running.copy(state = SessionState.IDLE), nowMs = 200_000, staleAfterMs = 120_000))
+    }
+
+    @Test
+    fun `clear or resume inside an agentmon terminal starts a new conversation instead of ending the session`() {
+        val wrapped = apply(null, """{$base,"hook_event_name":"Stop"}""")!!.session.copy(controlMode = ControlMode.WRAPPER)
+        val switched = apply(wrapped, """{$base,"hook_event_name":"SessionEnd","reason":"resume"}""")!!
+        assertEquals(SessionState.IDLE, switched.session.state)
+        assertEquals("New conversation", switched.event?.title)
+        val plain = apply(null, """{$base,"hook_event_name":"Stop"}""")!!.session
+        assertEquals(SessionState.ENDED, apply(plain, """{$base,"hook_event_name":"SessionEnd","reason":"resume"}""")!!.session.state)
     }
 }

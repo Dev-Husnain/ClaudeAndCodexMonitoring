@@ -30,6 +30,8 @@ fun ResumeDialog(
     resuming: Boolean,
     error: String?,
     modifier: Modifier = Modifier,
+    /** Opens the conversation in a terminal on the computer instead; null hides the option. */
+    onOpenTerminal: (() -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     AlertDialog(
@@ -51,6 +53,11 @@ fun ResumeDialog(
                     // Enter starts a new line; Continue sends.
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Default),
                 )
+                if (onOpenTerminal != null) {
+                    TextButton(onClick = onOpenTerminal, enabled = !resuming) {
+                        Text(stringResource(R.string.history_open_terminal), color = colors.brandEnd)
+                    }
+                }
             }
         },
         confirmButton = {

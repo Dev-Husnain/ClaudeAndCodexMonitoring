@@ -37,6 +37,7 @@ import com.claude.codex.ai.monitoring.desktop.system.DesktopSettings
 import com.claude.codex.ai.monitoring.desktop.system.KeepAwake
 import com.claude.codex.ai.monitoring.desktop.system.PublicAddress
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperEndpoint
+import com.claude.codex.ai.monitoring.desktop.wrapper.TerminalLauncher
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperHub
 import com.claude.codex.ai.monitoring.desktop.ui.DesktopApp
 import com.claude.codex.ai.monitoring.desktop.ui.aggregateState
@@ -55,7 +56,7 @@ import kotlinx.coroutines.launch
 import java.net.InetAddress
 import java.nio.file.Path
 
-private const val VERSION = "1.0.6"
+private const val VERSION = "1.0.7"
 
 /**
  * Arguments: `--background` starts in the tray (used when starting with Windows); `--demo` adds fake sessions for trying
@@ -109,6 +110,8 @@ fun main(args: Array<String>) {
         headless,
         transcripts,
         projectPath = { id -> projects.projects.value.firstOrNull { it.projectId == id }?.let { Path.of(it.path) } },
+        launcher = TerminalLauncher(dataDir.resolve("launch")),
+        projectName = { id -> projects.projects.value.firstOrNull { it.projectId == id }?.name },
     )
     val hookReceiver = HookReceiver(installer.secret, tracker, audit, control, sessionAlias = headless::sessionIdFor)
     val handler = ClientHandler(registry, codec, hub, devices, identity, audit, RateLimiter(), control, wrappers)

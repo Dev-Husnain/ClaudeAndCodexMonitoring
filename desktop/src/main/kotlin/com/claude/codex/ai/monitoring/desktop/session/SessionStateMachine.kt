@@ -17,7 +17,9 @@ data class Transition(val session: SessionDto, val event: TimelineEventDto?)
  *
  * - UserPromptSubmit / PreToolUse / PostToolUse(Failure) → RUNNING
  * - PermissionRequest, Notification(permission_prompt / elicitation / agent_needs_input) → WAITING_INPUT
- * - Stop → IDLE; StopFailure → ERROR; SessionEnd → ENDED
+ * - Stop → IDLE; StopFailure → ERROR; SessionEnd → ENDED, except in an `agentmon claude` terminal (WRAPPER):
+ *   there `/clear` and `/resume` end one conversation and start the next in the same terminal, so the session
+ *   stays (IDLE, "New conversation"); the wrapper itself reports when Claude really exits.
  * - RUNNING with no event for [staleAfterMs] → STALE (see [markStale])
  */
 object SessionStateMachine {
@@ -79,10 +81,18 @@ object SessionStateMachine {
                     event(EventKind.ERROR, "Stopped by an error", hook.lastAssistantMessage ?: info),
                 )
             }
-            "SessionEnd" -> Transition(
-                base.copy(state = SessionState.ENDED, lastEventAt = nowMs),
-                event(EventKind.SESSION_END, "Session ended", endReason(hook.reason)),
-            )
+            "SessionEnd" -> if (base.controlMode == ControlMode.WRAPPER) {
+                val switched = hook.reason == "clear" || hook.reason == "resume"
+                Transition(
+                    base.copy(state = SessionState.IDLE, awaiting = null, lastEventAt = nowMs),
+                    event(EventKind.SESSION_END, if (switched) "New conversation" else "Session ended", endReason(hook.reason)),
+                )
+            } else {
+                Transition(
+                    base.copy(state = SessionState.ENDED, lastEventAt = nowMs),
+                    event(EventKind.SESSION_END, "Session ended", endReason(hook.reason)),
+                )
+            }
             else -> null
         }
     }
@@ -105,7 +115,7 @@ object SessionStateMachine {
     /** Claude Code's SessionEnd `reason` in words; "other" says nothing useful, so it is dropped. */
     private fun endReason(reason: String?): String? = when (reason) {
         "clear" -> "Cleared with /clear"
-        "resume" -> "Switched to another session"
+        "resume" -> "Switched to another conversation"
         "logout" -> "Logged out"
         "prompt_input_exit" -> "Exited Claude Code"
         else -> null

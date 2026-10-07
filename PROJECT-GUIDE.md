@@ -210,6 +210,19 @@ DataStore. It is covered by the manual gate above.
   any Android Studio project shows up; never the home folder, a folder above it, or a drive root. Phones limited to
   chosen projects still need the grant. Real test: a wrapper in ClaudeMonitoring appeared after an agent restart
 
+### Delivery confirmation, terminal conversations, start Claude from the phone (v1.0.7)
+- [x] **Delivery is confirmed by the wrapper.** `hello.features = ["input-ack"]`; typed text and Enter carry ids and
+  the wrapper answers `input.ack` once written. The phone sees "Delivered" only after both acks; no ack within 4 s
+  answers FAILED ("restart agentmon claude"). Older wrappers keep the unconfirmed behaviour. Tests (2)
+- [x] **`/clear` and `/resume` in an `agentmon claude` terminal no longer end the session.** `SessionEnd` for a WRAPPER
+  session is "New conversation" (IDLE) and resets the topic; the wrapper's exit ends it. Seen in real use: a live
+  terminal showed "Ended – Switched to another session" with no Terminal tab. Test (1)
+- [x] **Start Claude from the phone** (`session.start`): an ended session's "Open in a terminal on your computer",
+  History's "Start a new Claude session" and "Open in a terminal instead". The agent creates the session, writes a
+  launch script and runs `cmd /c start`; `agentmon --session <id>` makes the wrapper use that id. Tests: launcher (4),
+  phone VMs (2)
+- [ ] Not tried on a device yet (owner asked to implement without real tests)
+
 ### Wrapper installed outside the build folder
 - [x] Seen in real use: a phone message showed "Delivered" but never reached a wrapped Claude. The wrapper ran from
   `cli/build/install` (on PATH), and a release build replaced its jars while it ran (wrapper started 21:22, cli.jar

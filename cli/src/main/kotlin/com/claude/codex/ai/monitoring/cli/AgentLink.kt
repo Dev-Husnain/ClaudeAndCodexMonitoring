@@ -28,7 +28,8 @@ import kotlin.io.path.readText
 class AgentLink(
     private val secret: String,
     private val hello: () -> WrapperMessage.Hello,
-    private val onInput: (String) -> Unit,
+    /** Types into Claude; true when it was written. */
+    private val onInput: (String) -> Boolean,
     private val url: String = "ws://${ProtocolConstants.LOOPBACK_HOST}:${ProtocolConstants.DEFAULT_PORT}${ProtocolConstants.PATH_WRAPPER}",
     private val replayChars: Int = REPLAY_CHARS,
 ) {
@@ -52,7 +53,9 @@ class AgentLink(
                     try {
                         for (frame in incoming) {
                             if (frame !is Frame.Text) continue
-                            (WrapperMessage.decode(frame.readText()) as? WrapperMessage.Input)?.let { onInput(it.data) }
+                            val input = WrapperMessage.decode(frame.readText()) as? WrapperMessage.Input ?: continue
+                            val typed = onInput(input.data)
+                            input.id?.let { outgoing.trySend(WrapperMessage.InputAck(it, typed)) }
                         }
                     } finally {
                         synchronized(lock) { if (current === outgoing) current = null }

@@ -7,20 +7,41 @@ import com.claude.codex.ai.monitoring.protocol.SessionDto
 import com.claude.codex.ai.monitoring.protocol.SessionState
 import com.claude.codex.ai.monitoring.protocol.TerminalKey
 import com.claude.codex.ai.monitoring.protocol.WrapperMessage
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /** Types into wrapper-started sessions. Implemented by [WrapperHub]; lets the control code be tested without one. */
+/** What happened to text typed into a wrapped terminal. */
+enum class TypeResult {
+    /** The wrapper confirmed it typed the text and Enter. */
+    CONFIRMED,
+
+    /** Sent to an older wrapper that cannot confirm. */
+    SENT,
+
+    /** The wrapper did not confirm: it is broken or Claude's terminal refused the input. */
+    NOT_TYPED,
+
+    /** No wrapper for this session. */
+    NO_WRAPPER,
+}
+
 interface WrapperInput {
     fun isWrapped(sessionId: String): Boolean
 
     /** Types [text] into Claude's input and submits it. */
     fun type(sessionId: String, text: String): Boolean
+
+    /** Like [type], but waits until the wrapper confirms it typed the text and Enter (when it can confirm). */
+    suspend fun typeConfirmed(sessionId: String, text: String): TypeResult
 
     fun press(sessionId: String, key: TerminalKey): Boolean
 }
@@ -40,10 +61,14 @@ class WrapperHub(
     private val projectFor: (cwd: String) -> String?,
     private val clock: () -> Long = System::currentTimeMillis,
     private val submitDelayMs: Long = SUBMIT_DELAY_MS,
+    private val ackTimeoutMs: Long = ACK_TIMEOUT_MS,
 ) : WrapperInput {
 
-    private class Link(val wrapperId: String, val mirror: TerminalMirror) {
+    private class Link(val wrapperId: String, val mirror: TerminalMirror, val confirmsInput: Boolean) {
         val outgoing = Channel<WrapperMessage>(OUTGOING_CAPACITY)
+
+        /** Inputs waiting for the wrapper's [WrapperMessage.InputAck], by id. */
+        val pendingAcks = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
     }
 
     private val links = ConcurrentHashMap<String, Link>()
@@ -53,7 +78,7 @@ class WrapperHub(
      * agent restart, taken over) right away when the folder is monitored.
      */
     fun connect(hello: WrapperMessage.Hello): Channel<WrapperMessage> {
-        val link = Link(hello.wrapperId, TerminalMirror(hello.columns, hello.rows))
+        val link = Link(hello.wrapperId, TerminalMirror(hello.columns, hello.rows), WrapperMessage.FEATURE_INPUT_ACK in hello.features)
         links.put(hello.wrapperId, link)?.let { old ->
             old.mirror.close()
             old.outgoing.close()
@@ -75,6 +100,7 @@ class WrapperHub(
         when (message) {
             is WrapperMessage.Output -> link.mirror.feed(message.data)
             is WrapperMessage.Resize -> link.mirror.resize(message.columns, message.rows)
+            is WrapperMessage.InputAck -> link.pendingAcks.remove(message.id)?.complete(message.ok)
             else -> Unit
         }
     }
@@ -96,6 +122,7 @@ class WrapperHub(
             }
         }
         links.remove(wrapperId)
+        link.pendingAcks.values.forEach { it.complete(false) }
         link.mirror.close()
         link.outgoing.close()
     }
@@ -104,18 +131,39 @@ class WrapperHub(
 
     override fun type(sessionId: String, text: String): Boolean {
         val link = linkOf(sessionId) ?: return false
-        val body = if (text.contains('\n') && link.mirror.bracketedPaste) {
-            "$PASTE_START$text$PASTE_END"
-        } else {
-            text.replace(Regex("\\s*\\n\\s*"), " ")
-        }
-        if (link.outgoing.trySend(WrapperMessage.Input(body)).isFailure) return false
+        if (link.outgoing.trySend(WrapperMessage.Input(typedBody(link, text))).isFailure) return false
         // Enter as a separate keystroke a moment later: in one write it would count as part of a paste.
         scope.launch {
             delay(submitDelayMs)
             link.outgoing.trySend(WrapperMessage.Input(ENTER))
         }
         return true
+    }
+
+    override suspend fun typeConfirmed(sessionId: String, text: String): TypeResult {
+        val link = linkOf(sessionId) ?: return TypeResult.NO_WRAPPER
+        if (!link.confirmsInput) return if (type(sessionId, text)) TypeResult.SENT else TypeResult.NO_WRAPPER
+        if (!sendConfirmed(link, typedBody(link, text))) return TypeResult.NOT_TYPED
+        // Enter as a separate keystroke a moment later: in one write it would count as part of a paste.
+        delay(submitDelayMs)
+        return if (sendConfirmed(link, ENTER)) TypeResult.CONFIRMED else TypeResult.NOT_TYPED
+    }
+
+    private suspend fun sendConfirmed(link: Link, data: String): Boolean {
+        val id = UUID.randomUUID().toString()
+        val ack = CompletableDeferred<Boolean>()
+        link.pendingAcks[id] = ack
+        if (link.outgoing.trySend(WrapperMessage.Input(data, id)).isFailure) {
+            link.pendingAcks.remove(id)
+            return false
+        }
+        return withTimeoutOrNull(ackTimeoutMs) { ack.await() }.also { link.pendingAcks.remove(id) } == true
+    }
+
+    private fun typedBody(link: Link, text: String): String = if (text.contains('\n') && link.mirror.bracketedPaste) {
+        "$PASTE_START$text$PASTE_END"
+    } else {
+        text.replace(Regex("\\s*\\n\\s*"), " ")
     }
 
     override fun press(sessionId: String, key: TerminalKey): Boolean {
@@ -158,6 +206,7 @@ class WrapperHub(
 
         private const val OUTGOING_CAPACITY = 64
         private const val SUBMIT_DELAY_MS = 120L
+        private const val ACK_TIMEOUT_MS = 4_000L
         private const val SCREEN_PERIOD_MS = 250L
         private const val ENTER = "\r"
         private const val PASTE_START = "\u001B[200~"

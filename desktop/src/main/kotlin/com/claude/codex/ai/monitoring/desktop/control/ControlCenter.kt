@@ -5,6 +5,7 @@ import com.claude.codex.ai.monitoring.desktop.devices.AuditLog
 import com.claude.codex.ai.monitoring.desktop.history.HeadlessRunner
 import com.claude.codex.ai.monitoring.desktop.history.SessionResumer
 import com.claude.codex.ai.monitoring.desktop.session.SessionRegistry
+import com.claude.codex.ai.monitoring.desktop.wrapper.TypeResult
 import com.claude.codex.ai.monitoring.desktop.wrapper.WrapperInput
 import com.claude.codex.ai.monitoring.protocol.AwaitingDto
 import com.claude.codex.ai.monitoring.protocol.AwaitingKind
@@ -136,7 +137,7 @@ class ControlCenter(
     }
 
     /** An instruction typed on the phone. */
-    fun deliverText(sessionId: String, text: String): Delivery {
+    suspend fun deliverText(sessionId: String, text: String): Delivery {
         val session = registry.session(sessionId) ?: return Delivery(DeliveryResult.FAILED, "Session not found")
         val instruction = text.trim().take(MAX_INSTRUCTION)
         if (instruction.isEmpty()) return Delivery(DeliveryResult.FAILED, "Empty message")
@@ -152,13 +153,18 @@ class ControlCenter(
         if (session.state == SessionState.ENDED) return Delivery(DeliveryResult.FAILED, "This session has ended")
 
         val held = synchronized(this) { heldStops.remove(sessionId) }
+        val typed = if (held == null && session.controlMode == ControlMode.WRAPPER) wrapper?.typeConfirmed(sessionId, instruction) else null
         val result = when {
             held != null -> {
                 held.complete(instruction)
                 Delivery(DeliveryResult.DELIVERED)
             }
-            session.controlMode == ControlMode.WRAPPER && wrapper?.type(sessionId, instruction) == true ->
-                Delivery(DeliveryResult.DELIVERED)
+            typed == TypeResult.CONFIRMED || typed == TypeResult.SENT -> Delivery(DeliveryResult.DELIVERED)
+            // The wrapper is connected but did not type it: say so instead of "Delivered".
+            typed == TypeResult.NOT_TYPED -> return Delivery(
+                DeliveryResult.FAILED,
+                "The agentmon terminal on your computer did not take the message. Restart agentmon claude there.",
+            )
             else -> {
                 synchronized(this) { queued[sessionId] = instruction }
                 Delivery(DeliveryResult.QUEUED, "Delivered when Claude finishes its current turn")
@@ -169,6 +175,16 @@ class ControlCenter(
     }
 
     fun pastSessions(projectId: String): List<PastSessionDto>? = resumer?.pastSessions(projectId)
+
+    /** Opens a terminal with Claude on this computer (from the phone); continues [claudeSessionId] when given. */
+    fun startTerminal(projectId: String, claudeSessionId: String?, by: String): Delivery {
+        val delivery = resumer?.startTerminal(projectId, claudeSessionId)
+            ?: return Delivery(DeliveryResult.FAILED, "Starting Claude from the phone is not available here")
+        if (delivery.result == DeliveryResult.DELIVERED) {
+            audit.record(AuditCategory.ACCESS, "Opened a Claude terminal on this computer ($by)")
+        }
+        return delivery
+    }
 
     /** Continues a saved conversation (from the phone's history list). */
     fun resume(projectId: String, claudeSessionId: String, text: String): Delivery {

@@ -50,6 +50,8 @@ class ProtocolCodecTest {
         Message.PastSessions("p1"),
         Message.PastSessionsResult("p1", listOf(PastSessionDto("c1", "Fix the login bug", 9L))),
         Message.ResumeSession("p1", "c1", "now add tests"),
+        Message.StartTerminal("p1", "c1"),
+        Message.StartTerminal("p1"),
         Message.TerminalScreen(
             "s1",
             columns = 120,

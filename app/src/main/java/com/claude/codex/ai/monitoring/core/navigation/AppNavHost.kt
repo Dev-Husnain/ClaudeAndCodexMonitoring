@@ -84,7 +84,15 @@ fun AppNavHost(
                 )
             }
             entry<Route.SessionDetail> { route ->
-                SessionDetailScreen(sessionId = route.sessionId, onBack = pop)
+                SessionDetailScreen(
+                    sessionId = route.sessionId,
+                    onBack = pop,
+                    // The ended session is done with: replace it by the one running in the new terminal.
+                    onOpenSession = { sessionId ->
+                        backStack.removeLastOrNull()
+                        backStack.add(Route.SessionDetail(sessionId))
+                    },
+                )
             }
             entry<Route.Settings> {
                 SettingsScreen(onBack = pop, onDevicesClick = { backStack.add(Route.DevicesSecurity) })

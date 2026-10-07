@@ -30,6 +30,7 @@ import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import java.nio.file.Files
@@ -53,6 +54,7 @@ class WrapperLinkTest {
         CoroutineScope(SupervisorJob() + Dispatchers.Default),
         projectFor = { projects.projectFor(it)?.projectId },
         submitDelayMs = 10,
+        ackTimeoutMs = 500,
     )
     private val receiver = HookReceiver(secret, tracker, agent.audit, control)
     private val handler = ClientHandler(agent.registry, agent.codec, agent.hub, agent.devices, agent.identity, agent.audit, RateLimiter(), control, hub)
@@ -79,6 +81,15 @@ class WrapperLinkTest {
 
     private suspend fun DefaultClientWebSocketSession.hello(id: String) =
         send(Frame.Text(WrapperMessage.encode(WrapperMessage.Hello(id, projectDir.resolve("src").toString(), 80, 24))))
+
+    /** A wrapper that confirms typed input, like `agentmon` 1.0.7 and later. */
+    private suspend fun DefaultClientWebSocketSession.confirmingHello(id: String) = send(
+        Frame.Text(WrapperMessage.encode(WrapperMessage.Hello(id, projectDir.resolve("src").toString(), 80, 24, listOf(WrapperMessage.FEATURE_INPUT_ACK)))),
+    )
+
+    private suspend fun DefaultClientWebSocketSession.nextInputFrame(): WrapperMessage.Input = withTimeout(5_000) {
+        assertIs<WrapperMessage.Input>(WrapperMessage.decode((incoming.receive() as Frame.Text).readText()))
+    }
 
     private suspend fun DefaultClientWebSocketSession.nextInput(): String = withTimeout(5_000) {
         assertIs<WrapperMessage.Input>(WrapperMessage.decode((incoming.receive() as Frame.Text).readText())).data
@@ -179,6 +190,37 @@ class WrapperLinkTest {
                 }
             }
             wrapper.send(Frame.Text(WrapperMessage.encode(WrapperMessage.Exit(0))))
+        }
+    }
+
+    @Test
+    fun `a message counts as delivered only when the wrapper confirms it typed it`() = testApplication {
+        setUp()
+        ws().webSocket(ProtocolConstants.PATH_WRAPPER, { header(ProtocolConstants.HEADER_SECRET, secret) }) {
+            confirmingHello("wrapper-0002")
+            awaitWrapped("wrapper-0002")
+            val delivery = async { control.deliverText("wrapper-0002", "run the tests") }
+            val text = nextInputFrame()
+            assertEquals("run the tests", text.data)
+            send(Frame.Text(WrapperMessage.encode(WrapperMessage.InputAck(text.id!!, ok = true))))
+            val enter = nextInputFrame()
+            assertEquals("\r", enter.data)
+            send(Frame.Text(WrapperMessage.encode(WrapperMessage.InputAck(enter.id!!, ok = true))))
+            assertEquals(DeliveryResult.DELIVERED, delivery.await().result)
+        }
+    }
+
+    @Test
+    fun `a wrapper that never confirms makes the phone hear a failure, not delivered`() = testApplication {
+        setUp()
+        ws().webSocket(ProtocolConstants.PATH_WRAPPER, { header(ProtocolConstants.HEADER_SECRET, secret) }) {
+            confirmingHello("wrapper-0003")
+            awaitWrapped("wrapper-0003")
+            val delivery = async { control.deliverText("wrapper-0003", "continue") }
+            nextInputFrame() // Received but never acknowledged, like a wrapper whose files were replaced under it.
+            val result = delivery.await()
+            assertEquals(DeliveryResult.FAILED, result.result)
+            assertTrue(result.detail!!.contains("agentmon claude"))
         }
     }
 }

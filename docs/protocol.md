@@ -27,6 +27,7 @@ The protocol is JSON over a single WebSocket (`/ws`). It is defined once in
 | C→D | `away.set` | `enabled` *(addition, phase 5a)* |
 | C→D | `sessions.past` | `projectId` *(addition, phase 6)* |
 | C→D | `session.resume` | `projectId`, `claudeSessionId`, `text` *(phase 6; needs input permission; `ack.detail` = session to open)* |
+| C→D | `session.start` | `projectId`, `claudeSessionId?` *(opens `agentmon claude [--resume id]` in a terminal on the computer; needs input permission; `ack.detail` = session to open)* |
 | C→D | `terminal.attach` / `terminal.detach` | `sessionId` / – *(phase 5b; one terminal per connection)* |
 | C→D | `terminal.key` | `sessionId`, `key: ENTER/ESCAPE/TAB/SHIFT_TAB/UP/DOWN/CTRL_C/DIGIT_1..3` *(addition, phase 5b; needs input permission)* |
 | C→D | `ping` | – |
@@ -176,11 +177,12 @@ Wrapper frames (JSON, `type` discriminator, never sent to phones):
 
 | Direction | type | payload |
 |---|---|---|
-| W→D | `hello` | `wrapperId` (UUID), `cwd`, `columns`, `rows` |
+| W→D | `hello` | `wrapperId` (UUID), `cwd`, `columns`, `rows`, `features?` (`["input-ack"]` from 1.0.7) |
 | W→D | `output` | `data` (terminal output, UTF-8) |
 | W→D | `resize` | `columns`, `rows` |
 | W→D | `exit` | `code` |
-| D→W | `input` | `data` (typed into Claude's terminal as is) |
+| W→D | `input.ack` | `id`, `ok`: the `input` with this id was written into Claude's terminal |
+| D→W | `input` | `data` (typed into Claude's terminal as is), `id?` (asks for an `input.ack`) |
 
 - **One terminal = one session.** The wrapper id is the session id. The session appears as soon as the
   wrapper connects from a monitored folder, so the phone can send the first prompt. Claude gets
@@ -189,9 +191,19 @@ Wrapper frames (JSON, `type` discriminator, never sent to phones):
   session instead of Claude's own session id, including after `/clear`. Without the wrapper the variable is
   unset and the header is empty.
 - Wrapper sessions are `WRAPPER` controlled. `send_input` types the text, then Enter 120 ms later as its own
-  keystroke; multi-line text is sent as a bracketed paste when Claude enabled it. With no hook held,
+  keystroke. A wrapper with `input-ack` confirms both writes; only then is the answer `DELIVERED`, and without a
+  confirmation within 4 s it is `FAILED` ("restart agentmon claude"), never a silent "Delivered". Older wrappers
+  are typed into without confirmation; multi-line text is sent as a bracketed paste when Claude enabled it. With no hook held,
   `quick_action` presses keys in Claude's own dialog (`ClaudeCodePromptProfile`: APPROVE = Enter,
   DENY/INTERRUPT = Esc), and APPROVE/DENY only while the session is waiting for input.
+- **Conversations inside one terminal.** `/clear` and `/resume` send `SessionEnd`; for a `WRAPPER` session this
+  is a new conversation ("New conversation", state IDLE), not the end. The session ends when the wrapper reports
+  that Claude exited.
+- **Starting a terminal from the phone** (`session.start`). The agent picks the session id, creates the session at
+  once, and runs `agentmon --session <id> claude [--resume <claudeSessionId>]` through a launch script with
+  `cmd /c start` (a new console in Windows' default terminal). Only checked ids reach the script, never phone
+  text; Claude Code's own session variables are removed from its environment. The wrapper is looked up next to a
+  packaged `AgentMon.exe`, in `%LOCALAPPDATA%\AgentMon\cli`, then on PATH. Windows only.
 - **Terminal mirror.** The agent feeds the output into a headless terminal emulator (JediTerm) and sends
   attached phones `terminal.screen`: the newest 500 lines (scrollback plus screen; the agent keeps its own scrollback because ConPTY repaints instead of scrolling), at most every 250 ms and
   only when something changed. Raw `terminal.chunk` output is not usable because Claude Code redraws with

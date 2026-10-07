@@ -39,6 +39,9 @@ data class SessionDetailUiState(
     val canStop: Boolean = false,
     /** Ended: sending a message resumes the conversation. */
     val resumable: Boolean = false,
+    /** Ended and this phone may control: it can open the conversation in a terminal on the computer. */
+    val canStartTerminal: Boolean = false,
+    val startingTerminal: Boolean = false,
     /** Run started from the phone (`claude -p --resume`): its permission prompts come here. */
     val startedFromPhone: Boolean = false,
     val showStopConfirm: Boolean = false,
@@ -52,6 +55,7 @@ data class SessionDetailUiState(
         deliveryTone = previous.deliveryTone,
         tab = if (hasTerminal) previous.tab else DetailTab.ACTIVITY,
         showStopConfirm = previous.showStopConfirm && canStop,
+        startingTerminal = previous.startingTerminal,
     )
 }
 

@@ -113,4 +113,21 @@ class PastSessionsViewModelTest {
         runCurrent()
         assertTrue(vm.pastSessionsUiState.value.isUnavailable)
     }
+
+    @Test
+    fun `a new session or a saved conversation can be opened in a terminal on the computer`() {
+        repository.past["p1"] = listOf(old)
+        val vm = viewModel()
+        val effects = vm.collectEffects()
+        runCurrent()
+
+        vm.onEvent(PastSessionsEvent.OnNewSessionClick)
+        runCurrent()
+        vm.onEvent(PastSessionsEvent.OnSessionClick("c-old"))
+        vm.onEvent(PastSessionsEvent.OnResumeInTerminal)
+        runCurrent()
+        assertEquals(listOf<Pair<String, String?>>("p1" to null, "p1" to "c-old"), repository.terminalStarts.toList())
+        assertEquals(2, effects.size)
+        assertNull(vm.pastSessionsUiState.value.resumeTarget)
+    }
 }

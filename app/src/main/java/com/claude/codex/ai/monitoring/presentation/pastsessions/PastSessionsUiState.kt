@@ -17,6 +17,8 @@ data class PastSessionsUiState(
     val resuming: Boolean = false,
     val resumeError: UiText? = null,
     val removeTarget: PastSessionItemUiModel? = null,
+    val startingTerminal: Boolean = false,
+    val startError: UiText? = null,
 )
 
 @Immutable

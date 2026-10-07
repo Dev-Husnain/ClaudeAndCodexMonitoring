@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claude.codex.ai.monitoring.R
 import com.claude.codex.ai.monitoring.core.theme.AppTheme
 import com.claude.codex.ai.monitoring.core.theme.Dimens
+import com.claude.codex.ai.monitoring.core.ui.GradientButton
 import com.claude.codex.ai.monitoring.core.ui.AppTopBar
 import com.claude.codex.ai.monitoring.core.ui.AuroraBackground
 import com.claude.codex.ai.monitoring.core.ui.ConfirmDialog
@@ -59,6 +60,7 @@ fun PastSessionsScreen(
             onTextChange = { viewModel.onEvent(PastSessionsEvent.OnResumeTextChange(it)) },
             onResume = { viewModel.onEvent(PastSessionsEvent.OnResumeConfirm) },
             onDismiss = { viewModel.onEvent(PastSessionsEvent.OnResumeDismiss) },
+            onOpenTerminal = { viewModel.onEvent(PastSessionsEvent.OnResumeInTerminal) },
             resuming = state.resuming,
             error = state.resumeError?.resolve(),
         )
@@ -99,7 +101,10 @@ fun PastSessionsScreen(
                 state.sessions.isEmpty() -> StateMessage(
                     icon = R.drawable.ic_activity,
                     title = stringResource(R.string.history_empty_title),
-                    message = stringResource(R.string.history_empty_message),
+                    message = state.startError?.resolve() ?: stringResource(R.string.history_empty_message),
+                    actionLabel = if (state.canResume) stringResource(R.string.history_new_session) else null,
+                    actionIcon = R.drawable.ic_play,
+                    onAction = { viewModel.onEvent(PastSessionsEvent.OnNewSessionClick) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 else -> LazyColumn(
@@ -112,6 +117,22 @@ fun PastSessionsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = AppTheme.colors.textSecondary,
                         )
+                    }
+                    if (state.canResume) {
+                        item(key = "new-session", contentType = "action") {
+                            GradientButton(
+                                text = stringResource(if (state.startingTerminal) R.string.detail_terminal_starting else R.string.history_new_session),
+                                onClick = { viewModel.onEvent(PastSessionsEvent.OnNewSessionClick) },
+                                enabled = !state.startingTerminal,
+                                leadingIcon = R.drawable.ic_play,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        state.startError?.let { error ->
+                            item(key = "start-error", contentType = "hint") {
+                                Text(error.resolve(), style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.error)
+                            }
+                        }
                     }
                     items(state.sessions, key = { it.claudeSessionId }, contentType = { "session" }) { session ->
                         PastSessionRow(

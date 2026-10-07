@@ -129,7 +129,7 @@ class ClientHandler(
                     else -> Message.PastSessionsResult(message.projectId, control?.pastSessions(message.projectId).orEmpty())
                 }
                 is Message.SendInput, is Message.QuickActionRequest, is Message.SetAwayMode, is Message.TerminalKeyRequest,
-                is Message.ResumeSession ->
+                is Message.ResumeSession, is Message.StartTerminal ->
                     if (!grant.canSendInput) {
                         Message.Error(ErrorCode.READ_ONLY, "This device is read-only", frame.id)
                     } else {
@@ -163,11 +163,16 @@ class ClientHandler(
         forwarder.cancel()
     }
 
-    private fun control(message: Message, ackId: String, device: PairedDevice): Message {
+    private suspend fun control(message: Message, ackId: String, device: PairedDevice): Message {
         val center = control ?: return Message.Error(ErrorCode.SESSION_NOT_CONTROLLABLE, "Control is not available", ackId)
         if (message is Message.SetAwayMode) {
             center.setAwayMode(message.enabled, by = device.name)
             return Message.Ack(ackId, DeliveryResult.DELIVERED)
+        }
+        if (message is Message.StartTerminal) {
+            if (!device.grant.allows(message.projectId)) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)
+            val delivery = center.startTerminal(message.projectId, message.claudeSessionId, by = device.name)
+            return Message.Ack(ackId, delivery.result, delivery.detail)
         }
         if (message is Message.ResumeSession) {
             if (!device.grant.allows(message.projectId)) return Message.Error(ErrorCode.FORBIDDEN_PROJECT, "Not allowed", ackId)

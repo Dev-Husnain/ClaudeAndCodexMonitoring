@@ -23,4 +23,7 @@ sealed interface SessionDetailEvent {
     data object OnStopConfirm : SessionDetailEvent
 
     data object OnStopDismiss : SessionDetailEvent
+
+    /** Open this ended conversation in a terminal on the computer. */
+    data object OnStartTerminalClick : SessionDetailEvent
 }
